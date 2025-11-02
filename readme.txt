@@ -22,3 +22,7 @@ docker run -d -p 80:10000 --name heroesascent heroesascent
 
 doker fermati
 docker ps -a
+
+docker logs heroesascent
+
+docker restart heroesascent
