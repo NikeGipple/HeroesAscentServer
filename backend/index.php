@@ -1,5 +1,5 @@
 <?php
 echo json_encode([
-  "status" => "ok",
+  "status" => "off-line",
   "message" => "Heroes Ascent server online 🚀"
 ]);
