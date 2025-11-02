@@ -31,11 +31,18 @@ docker restart heroesascent
 
 docker stop heroesascent
 docker rm heroesascent
+
+da chiarire:
+docker compose up -d --build 
+oppure 
 docker build -t heroesascent .
+
+
 docker run -d -p 80:10000 --name heroesascent heroesascent
 
 // per entrare nel docker
 docker exec -it heroesascent bash
+
 
 // riavvia apache2
 service apache2 restart
