@@ -48,3 +48,7 @@ docker exec -it heroesascent bash
 service apache2 restart
 
 docker update --restart always heroesascent
+
+docker logs heroesascent > /root/HeroesAscentServer/apache_error.log
+chown -R www-data:www-data /var/www/html
+chmod -R 755 /var/www/html
