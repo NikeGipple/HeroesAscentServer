@@ -26,10 +26,10 @@ RUN composer install --no-dev --optimize-autoloader
 # Imposta i permessi corretti
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Imposta Apache per ascoltare su 80 e 10000 (necessario per Certbot e per compatibilità Docker)
+# Imposta Apache per ascoltare su 80 e 10000
 RUN sed -i 's/^Listen 80$/Listen 80\nListen 10000/' /etc/apache2/ports.conf
 
-# Crea un VirtualHost che serve Laravel da /public (su entrambe le porte)
+# Crea un VirtualHost che serve Laravel da /public
 RUN echo '<VirtualHost *:80>\n\
     ServerName heroesascent.org\n\
     ServerAlias www.heroesascent.org\n\
