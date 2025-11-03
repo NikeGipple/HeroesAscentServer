@@ -20,7 +20,8 @@ services:
     depends_on:
       - db
     volumes:
-      - .:/var/www/html
+      - /root/HeroesAscentServer:/var/www/html
+
 
   db:
     image: mysql:8.0
