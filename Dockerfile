@@ -32,3 +32,18 @@ RUN sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf
 
 EXPOSE 10000
 CMD ["apache2-foreground"]
+
+# Imposta il DocumentRoot corretto (quello dentro il container)
+# Imposta il DocumentRoot corretto (con porta 10000)
+RUN echo '<VirtualHost *:10000>\n\
+    ServerAdmin webmaster@localhost\n\
+    DocumentRoot /var/www/html/public\n\
+    <Directory /var/www/html/public>\n\
+        Options Indexes FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+
