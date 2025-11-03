@@ -12,11 +12,13 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Imposta DocumentRoot sulla cartella public
 RUN sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/public#' /etc/apache2/sites-available/000-default.conf
 
-# Installa estensioni PHP e utilità (incluso nano)
+# Installa estensioni PHP, utilità e Certbot
 RUN apt-get update && apt-get install -y \
     nano \
     libpng-dev libjpeg-dev libfreetype6-dev zip git unzip curl \
-    && docker-php-ext-install pdo pdo_mysql gd
+    certbot python3-certbot-apache \
+    && docker-php-ext-install pdo pdo_mysql gd \
+    && rm -rf /var/lib/apt/lists/*
 
 # Installa Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
