@@ -12,6 +12,7 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Installa estensioni PHP, utilità e Certbot
 RUN apt-get update && apt-get install -y \
     nano \
+    cron \
     libpng-dev libjpeg-dev libfreetype6-dev zip git unzip curl \
     certbot python3-certbot-apache \
     && docker-php-ext-install pdo pdo_mysql gd \
@@ -56,5 +57,10 @@ RUN echo '<VirtualHost *:80>\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
+# Aggiunge cron job per rinnovo automatico SSL ogni 12 ore
+RUN echo '0 */12 * * * root certbot renew --quiet && service apache2 reload' >> /etc/crontab
+
 EXPOSE 80 10000
-CMD ["apache2-foreground"]
+
+# Avvia sia cron che Apache insieme
+CMD service cron start && apache2-foreground
