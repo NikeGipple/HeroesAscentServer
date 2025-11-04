@@ -2,37 +2,72 @@ import React from "react";
 import { motion } from "framer-motion";
 
 
+
 export default function Home() {
   return (
-    <section className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center">
-      {/* === Sfondo immagine === */}
-      <div
-        className="absolute inset-0 -z-10 bg-cover bg-center opacity-60"
-        style={{ backgroundImage: "url('/images/heroes-bg.jpg')" }}
-      ></div>
+    <section
+      className="position-relative vh-100 w-100 overflow-hidden text-white d-flex align-items-center justify-content-center bg-transparent"
+    >
+      {/* === Sfondo principale animato === */}
+      <motion.div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: 0,
+          opacity: 0.8,
+          backgroundImage: "url('/images/heroes-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+        animate={{
+          scale: [1, 1.05, 1],
+          backgroundPositionX: ["50%", "55%", "50%"],
+        }}
+        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+      ></motion.div>
 
       {/* === Glow radiale === */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,200,100,0.25)_0%,rgba(0,0,0,0.9)_80%)] pointer-events-none"></div>
+      <div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: 10,
+          background:
+            "radial-gradient(circle at center, rgba(255,200,100,0.25) 0%, rgba(0,0,0,0.9) 80%)",
+          pointerEvents: "none",
+        }}
+      ></div>
 
       {/* === Nebbia animata === */}
       <motion.div
-        className="absolute inset-0 bg-[url('./images/fog-texture.png')] bg-cover opacity-25 mix-blend-lighten pointer-events-none"
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: 20,
+          backgroundImage: "url('/images/fog-texture.png')",
+          backgroundSize: "cover",
+          mixBlendMode: "lighten",
+          opacity: 0.25,
+          pointerEvents: "none",
+        }}
         animate={{
           backgroundPositionX: ["0%", "100%"],
           backgroundPositionY: ["0%", "100%"],
         }}
         transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-      />
+      ></motion.div>
 
-      {/* === Contenitore centrale === */}
+      {/* === Contenuto centrale === */}
       <motion.div
-        className="relative flex flex-col items-center justify-center text-center"
+        className="position-relative text-center px-3"
+        style={{ zIndex: 30 }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.5 }}
       >
         <motion.h1
-          className="text-6xl md:text-7xl font-extrabold tracking-widest mb-3 drop-shadow-[0_0_30px_rgba(255,200,100,0.8)]"
+          className="fw-bold mb-3 display-3"
+          style={{
+            letterSpacing: "0.2rem",
+            textShadow: "0 0 30px rgba(255,200,100,0.8)",
+          }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 2, ease: "easeOut" }}
@@ -41,7 +76,7 @@ export default function Home() {
         </motion.h1>
 
         <motion.p
-          className="text-lg md:text-xl text-gray-300 italic tracking-wide"
+          className="lead fst-italic text-light"
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 1.5 }}
@@ -52,18 +87,20 @@ export default function Home() {
 
       {/* === Freccia in basso === */}
       <motion.div
-        className="absolute bottom-10 text-yellow-400 cursor-pointer"
+        className="position-absolute bottom-0 mb-4 text-warning cursor-pointer"
+        style={{ zIndex: 30 }}
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
         onClick={() => (window.location.href = "/regolamento")}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="w-8 h-8"
+          width="24"
+          height="24"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth={2}
+          strokeWidth="2"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>

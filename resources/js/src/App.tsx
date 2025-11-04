@@ -3,7 +3,7 @@ import { Outlet, Link } from "react-router-dom";
 
 export default function App() {
   return (
-    <div style={{ textAlign: "center", padding: "2rem" }}>
+    <div>
       {/* Dove verranno renderizzate le sottopagine */}
       <Outlet />
     </div>
