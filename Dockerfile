@@ -31,7 +31,6 @@ WORKDIR /var/www/html
 
 # Installa le dipendenze Node e builda il frontend
 RUN npm install 
-RUN npm run build
 
 # === Permessi e configurazione Apache ===
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
