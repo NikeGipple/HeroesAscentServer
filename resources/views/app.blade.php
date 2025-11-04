@@ -7,6 +7,9 @@
 
     @viteReactRefresh
     @vite(['resources/js/main.tsx'])
+
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    
 </head>
 <body class="antialiased">
     <div id="app"></div>

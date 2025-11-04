@@ -1,0 +1,16 @@
+body {
+  background-color: #0f172a; /* sfondo scuro elegante */
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+}
+
+h1, h2 {
+  letter-spacing: 1px;
+}
+
+button {
+  transition: all 0.3s ease;
+}
+button:hover {
+  transform: scale(1.05);
+}
