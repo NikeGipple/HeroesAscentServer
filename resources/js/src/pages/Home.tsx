@@ -7,7 +7,8 @@ export default function Home() {
     <section className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center">
       {/* === Sfondo immagine === */}
       <div
-        className="absolute inset-0 -z-10 bg-[url('./images/heroes-bg.jpg')] bg-cover bg-center opacity-60"
+        className="absolute inset-0 -z-10 bg-cover bg-center opacity-60"
+        style={{ backgroundImage: "url('/images/heroes-bg.jpg')" }}
       ></div>
 
       {/* === Glow radiale === */}
