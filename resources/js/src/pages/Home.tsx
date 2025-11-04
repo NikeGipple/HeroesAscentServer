@@ -4,20 +4,13 @@ import { motion } from "framer-motion";
 export default function Home() {
   return (
     <section className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center">
-      {/* === Sfondo (video o immagine) === */}
-      <div className="absolute inset-0 -z-10">
-        <video
-          src="/videos/heroes-bg.jpg"
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover opacity-60"
-        />
-      </div>
+      {/* === Sfondo immagine === */}
+      <div
+        className="absolute inset-0 -z-10 bg-[url('/images/heroes-bg.jpg')] bg-cover bg-center opacity-60"
+      ></div>
 
       {/* === Glow radiale === */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,200,100,0.25)_0%,rgba(0,0,0,0.9)_80%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,200,100,0.25)_0%,rgba(0,0,0,0.9)_80%)] pointer-events-none"></div>
 
       {/* === Nebbia animata === */}
       <motion.div
@@ -29,7 +22,7 @@ export default function Home() {
         transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* === Contenitore centrale (vero centro verticale e orizzontale) === */}
+      {/* === Contenitore centrale === */}
       <motion.div
         className="relative flex flex-col items-center justify-center text-center"
         initial={{ opacity: 0 }}
@@ -40,7 +33,7 @@ export default function Home() {
           className="text-6xl md:text-7xl font-extrabold tracking-widest mb-3 drop-shadow-[0_0_30px_rgba(255,200,100,0.8)]"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 2, ease: 'easeOut' }}
+          transition={{ duration: 2, ease: "easeOut" }}
         >
           HEROES ASCENT
         </motion.h1>
@@ -60,7 +53,7 @@ export default function Home() {
         className="absolute bottom-10 text-yellow-400 cursor-pointer"
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        onClick={() => (window.location.href = '/regolamento')}
+        onClick={() => (window.location.href = "/regolamento")}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
