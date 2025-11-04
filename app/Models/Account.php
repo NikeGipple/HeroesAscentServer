@@ -11,8 +11,9 @@ class Account extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'api_key', 
-        'active'
+        'api_key',
+        'account_token',
+        'active',
     ];
 
     // Relazione con i personaggi
@@ -20,6 +21,4 @@ class Account extends Model
     {
         return $this->hasMany(Character::class);
     }
-
-
 }
