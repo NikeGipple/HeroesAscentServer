@@ -7,6 +7,7 @@ import App from "@/App";
 import { store } from "@/redux/store";
 import Home from "@/pages/Home";
 import Error404 from "@/pages/Error404";
+import "../css/app.css";
 
 /**
  * Configurazione del router
