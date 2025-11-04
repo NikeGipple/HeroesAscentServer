@@ -1,12 +1,13 @@
 import React from "react";
 import { motion } from "framer-motion";
 
+
 export default function Home() {
   return (
     <section className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center">
       {/* === Sfondo immagine === */}
       <div
-        className="absolute inset-0 -z-10 bg-[url('/images/heroes-bg.jpg')] bg-cover bg-center opacity-60"
+        className="absolute inset-0 -z-10 bg-[url('./images/heroes-bg.jpg')] bg-cover bg-center opacity-60"
       ></div>
 
       {/* === Glow radiale === */}
@@ -14,7 +15,7 @@ export default function Home() {
 
       {/* === Nebbia animata === */}
       <motion.div
-        className="absolute inset-0 bg-[url('/images/fog-texture.png')] bg-cover opacity-25 mix-blend-lighten pointer-events-none"
+        className="absolute inset-0 bg-[url('./images/fog-texture.png')] bg-cover opacity-25 mix-blend-lighten pointer-events-none"
         animate={{
           backgroundPositionX: ["0%", "100%"],
           backgroundPositionY: ["0%", "100%"],
