@@ -9,6 +9,8 @@
     @vite(['resources/js/main.tsx'])
 
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+
     
 </head>
 <body class="antialiased">

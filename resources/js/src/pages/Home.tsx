@@ -13,17 +13,32 @@ export default function Home() {
         className="position-absolute top-0 start-0 w-100 h-100"
         style={{
           zIndex: 0,
-          opacity: 0.8,
+          backgroundColor: "black",
           backgroundImage: "url('/images/heroes-bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center center",
+          backgroundSize: "contain", // l’immagine resta intera
+          filter: "contrast(1.1) saturate(1.1) brightness(1)",
+          transformOrigin: "center center",
         }}
         animate={{
-          scale: [1, 1.05, 1],
-          backgroundPositionX: ["50%", "55%", "50%"],
+          scale: [1, 1.04, 1], // piccolo respiro avanti e indietro
+          filter: [
+            "contrast(1.1) saturate(1.1) brightness(1)",
+            "contrast(1.2) saturate(1.3) brightness(1.08)",
+            "contrast(1.1) saturate(1.1) brightness(1)",
+          ],
         }}
-        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+        transition={{
+          duration: 40,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
       ></motion.div>
+
+
+
+
 
       {/* === Glow radiale === */}
       <div
@@ -31,29 +46,64 @@ export default function Home() {
         style={{
           zIndex: 10,
           background:
-            "radial-gradient(circle at center, rgba(255,200,100,0.25) 0%, rgba(0,0,0,0.9) 80%)",
+            "radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.7) 80%)",
           pointerEvents: "none",
         }}
       ></div>
 
-      {/* === Nebbia animata === */}
+
+      {/* === Nebbia animata (strato basso) === */}
       <motion.div
-        className="position-absolute top-0 start-0 w-100 h-100"
+        className="position-absolute start-0 w-100"
         style={{
+          bottom: 0,                // resta ancorata in basso
+          height: "50%",            // solo la parte più bassa dello schermo
           zIndex: 20,
           backgroundImage: "url('/images/fog-texture.png')",
-          backgroundSize: "cover",
+          backgroundRepeat: "repeat-x",
+          backgroundSize: "auto 100%",
           mixBlendMode: "lighten",
-          opacity: 0.25,
+          opacity: 0.15,            // leggermente più visibile ma non invadente
           pointerEvents: "none",
         }}
         animate={{
-          backgroundPositionX: ["0%", "100%"],
-          backgroundPositionY: ["0%", "100%"],
+          backgroundPositionX: ["0%", "100%"], // movimento orizzontale continuo
         }}
-        transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+        transition={{
+          duration: 80,             // lento e costante
+          repeat: Infinity,
+          ease: "linear",
+        }}
       ></motion.div>
 
+      {/* Strato 1 — nebbia in primo piano, più densa e veloce */}
+
+
+      {/* Strato 2 — nebbia sullo sfondo, più leggera e lenta */}
+      <motion.div
+        className="position-absolute start-0 w-100"
+        style={{
+          bottom: 0,
+          height: "50%",
+          zIndex: 20,
+          backgroundImage: "url('/images/fog-texture.png')",
+          backgroundRepeat: "repeat-x",
+          backgroundSize: "auto 100%",
+          mixBlendMode: "lighten",
+          opacity: 0.1, // più tenue
+          pointerEvents: "none",
+        }}
+        animate={{
+          backgroundPositionX: ["100%", "0%"], // direzione opposta
+        }}
+        transition={{
+          duration: 120, // più lento → senso di profondità
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      ></motion.div>
+
+      
       {/* === Contenuto centrale === */}
       <motion.div
         className="position-relative text-center px-3"
@@ -65,8 +115,13 @@ export default function Home() {
         <motion.h1
           className="fw-bold mb-3 display-3"
           style={{
+            fontFamily: "'Cinzel', serif",
+            fontWeight: 700,
             letterSpacing: "0.2rem",
             textShadow: "0 0 30px rgba(255,200,100,0.8)",
+            background: "linear-gradient(90deg, #ffd27a 0%, #fff2cc 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
           }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -76,12 +131,18 @@ export default function Home() {
         </motion.h1>
 
         <motion.p
-          className="lead fst-italic text-light"
+          style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: "1.25rem",
+            fontWeight: 400,
+            color: "rgba(255,255,255,0.85)",
+            textShadow: "0 0 15px rgba(255,200,100,0.4)",
+          }}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 1.5 }}
         >
-          L’ascesa comincia qui.
+          La tua ascesa comincia qui
         </motion.p>
       </motion.div>
 
@@ -91,7 +152,7 @@ export default function Home() {
         style={{ zIndex: 30 }}
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        onClick={() => (window.location.href = "/regolamento")}
+        // onClick={() => (window.location.href = "/regolamento")}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
