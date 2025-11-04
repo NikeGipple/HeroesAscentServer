@@ -7,7 +7,7 @@ export default function Home() {
       {/* === Sfondo (video o immagine) === */}
       <div className="absolute inset-0 -z-10">
         <video
-          src="/videos/heroes-bg.mp4"
+          src="/videos/heroes-bg.jpg"
           autoPlay
           loop
           muted
