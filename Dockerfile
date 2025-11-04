@@ -7,15 +7,18 @@ RUN a2enmod rewrite
 RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
 # Installa estensioni PHP, Node, npm, utilità e Certbot
+# Installa estensioni PHP, Node, npm, utilità e Certbot
 RUN apt-get update && apt-get install -y \
     nano \
     cron \
-    nodejs \
-    npm \
-    libpng-dev libjpeg-dev libfreetype6-dev zip git unzip curl \
+    curl \
+    libpng-dev libjpeg-dev libfreetype6-dev zip git unzip \
     certbot python3-certbot-apache \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && docker-php-ext-install pdo pdo_mysql gd \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Installa Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
