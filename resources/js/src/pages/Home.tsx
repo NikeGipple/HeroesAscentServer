@@ -173,7 +173,8 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 1.5 }}
         >
-          La tua ascesa comincia qui
+          Your ascent begins here!
+          {/* La tua ascesa comincia qui */}
         </motion.p>
       </motion.div>
 
