@@ -9,6 +9,7 @@ import Home from "@/pages/Home";
 import Error404 from "@/pages/Error404";
 import "../css/app.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import Rules from "@/pages/Rules";
 
 /**
  * Configurazione del router
@@ -20,6 +21,8 @@ const router = createBrowserRouter([
     errorElement: <Error404 />,
     children: [
       { path: "/", element: <Home /> },
+     
+      
     ],
   },
 ]);

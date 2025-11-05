@@ -1,10 +1,17 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+import { useNavigate } from "react-router-dom";
 
 
 
 export default function Home() {
+
+  const navigate = useNavigate();
+  const [showRules, setShowRules] = useState(false);
+
   return (
+    <>
     <section
       className="position-relative vh-100 w-100 overflow-hidden text-white d-flex align-items-center justify-content-center bg-transparent"
     >
@@ -17,12 +24,12 @@ export default function Home() {
           backgroundImage: "url('/images/heroes-bg.jpg')",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center center",
-          backgroundSize: "contain", // l’immagine resta intera
+          backgroundSize: "contain", 
           filter: "contrast(1.1) saturate(1.1) brightness(1)",
           transformOrigin: "center center",
         }}
         animate={{
-          scale: [1, 1.04, 1], // piccolo respiro avanti e indietro
+          scale: [1, 1.04, 1],
           filter: [
             "contrast(1.1) saturate(1.1) brightness(1)",
             "contrast(1.2) saturate(1.3) brightness(1.08)",
@@ -44,7 +51,7 @@ export default function Home() {
         zIndex: 25,
         backgroundImage: "url('/images/particles.png')",
         backgroundRepeat: "repeat",
-        backgroundSize: "100px 100px", // dimensione tile
+        backgroundSize: "100px 100px",
         mixBlendMode: "color-dodge",
         opacity: 0.10,
         pointerEvents: "none",
@@ -54,7 +61,7 @@ export default function Home() {
         backgroundPositionY: ["0%", "20%", "10%", "30%", "0%"],
       }}
       transition={{
-        duration: 90,        // ciclo molto lento e naturale
+        duration: 90,
         repeat: Infinity,
         ease: "easeInOut",
       }}
@@ -78,21 +85,21 @@ export default function Home() {
       <motion.div
         className="position-absolute start-0 w-100"
         style={{
-          bottom: 0,                // resta ancorata in basso
-          height: "50%",            // solo la parte più bassa dello schermo
+          bottom: 0,
+          height: "50%",
           zIndex: 20,
           backgroundImage: "url('/images/fog-texture.png')",
           backgroundRepeat: "repeat-x",
           backgroundSize: "auto 100%",
           mixBlendMode: "lighten",
-          opacity: 0.15,            // leggermente più visibile ma non invadente
+          opacity: 0.15,            
           pointerEvents: "none",
         }}
         animate={{
-          backgroundPositionX: ["0%", "100%"], // movimento orizzontale continuo
+          backgroundPositionX: ["0%", "100%"], 
         }}
         transition={{
-          duration: 80,             // lento e costante
+          duration: 80,
           repeat: Infinity,
           ease: "linear",
         }}
@@ -110,14 +117,14 @@ export default function Home() {
           backgroundRepeat: "repeat-x",
           backgroundSize: "auto 100%",
           mixBlendMode: "lighten",
-          opacity: 0.1, // più tenue
+          opacity: 0.1, 
           pointerEvents: "none",
         }}
         animate={{
-          backgroundPositionX: ["100%", "0%"], // direzione opposta
+          backgroundPositionX: ["100%", "0%"], 
         }}
         transition={{
-          duration: 120, // più lento → senso di profondità
+          duration: 120,
           repeat: Infinity,
           ease: "linear",
         }}
@@ -145,7 +152,7 @@ export default function Home() {
             background: "linear-gradient(90deg, #ffd27a 0%, #fff2cc 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            userSelect: "none", // 👈 impedisce la selezione
+            userSelect: "none", 
           }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -161,7 +168,7 @@ export default function Home() {
             fontWeight: 400,
             color: "rgba(255,255,255,0.85)",
             textShadow: "0 0 15px rgba(255,200,100,0.4)",
-            userSelect: "none", // 👈 anche qui
+            userSelect: "none",
           }}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -177,20 +184,94 @@ export default function Home() {
         style={{ zIndex: 30 }}
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        // onClick={() => (window.location.href = "/regolamento")}
+        onClick={() => setShowRules(true)} // 👈 apre la modale
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </motion.div>
+
     </section>
-  );
+
+    {/* === Modale Regole === */}
+      <AnimatePresence>
+        {showRules && (
+          <motion.div
+            className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+            style={{
+              backgroundColor: "rgba(0, 0, 0, 0.75)",
+              backdropFilter: "blur(8px)",
+              zIndex: 999,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            onClick={() => setShowRules(false)}
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              className="p-4 text-light rounded-4 shadow-lg"
+              style={{
+                width: "80%",
+                maxWidth: "800px",
+                maxHeight: "80vh",
+                overflowY: "auto",
+                background: "rgba(0,0,0,0.7)",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h2
+                  className="fw-bold text-warning mb-0"
+                  style={{ fontFamily: "'Cinzel', serif" }}
+                >
+                  HEROES ASCENT — RULES
+                </h2>
+                <button
+                  className="btn btn-outline-warning btn-sm"
+                  onClick={() => setShowRules(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p>
+                Welcome to the <b>2nd Edition of Heroes Ascent – Guild Wars 2 Contest!</b>
+                Level from 0 to 80 following these rules:
+              </p>
+
+              <ul>
+                <li>Use a <b>new account</b> under 2500 AP.</li>
+                <li>Only open world maps, no cities or story.</li>
+                <li><b>No boosters</b>, food, or consumables.</li>
+                <li>No healing skill (slot 6).</li>
+                <li>If you go downed — delete the character.</li>
+              </ul>
+
+              <p className="mt-3">
+                ⏱ Event from <b>Nov 4 → Nov 18, 2024</b>
+                <br />🎁 30 gold participation reward — plus 700 gold in extra prizes!
+              </p>
+
+              <div className="text-center mt-4">
+                <a
+                  href="https://tinyurl.com/heroesascent"
+                  className="btn btn-warning"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View Complete Rules
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+    );
 }

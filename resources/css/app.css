@@ -1,15 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-/* --- Stili personalizzati globali opzionali --- */
 body {
-  @apply bg-slate-900 text-white;
-  font-family: 'Inter', sans-serif;
+
 }
 
 .hero-bg {
   background-image: url('/images/heroes-bg.jpg') !important;
   background-size: cover !important;
   background-position: center !important;
+}
+
+body.blur-transition {
+  transition: filter 0.4s ease, opacity 0.4s ease;
+  filter: blur(10px);
+  opacity: 0;
 }
