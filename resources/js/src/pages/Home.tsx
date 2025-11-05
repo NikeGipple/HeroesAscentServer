@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 
 export default function Home() {
 
-  const navigate = useNavigate();
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -241,7 +240,9 @@ export default function Home() {
               </div>
 
               <p>
-                Welcome to the <b>2nd Edition of Heroes Ascent – Guild Wars 2 Contest!</b>
+                Welcome to the <b>3nd Edition of Heroes Ascent – Guild Wars 2 Contest!</b>
+              </p>
+              <p>
                 Level from 0 to 80 following these rules:
               </p>
 
