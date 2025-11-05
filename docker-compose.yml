@@ -33,7 +33,7 @@ services:
       MYSQL_USER: heroes
       MYSQL_PASSWORD: GL5nK:^P>UgG%2
     volumes:
-      - db_data:/var/lib/mysql
+      - /root/mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
 
