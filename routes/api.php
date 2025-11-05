@@ -5,8 +5,8 @@ use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\CharacterController;
 
 // 🔧 Test server
-Route::get('/ping', function () {
-    return response()->json(['status' => 'ok', 'message' => 'pong']);
+Route::get('/status', function () {
+    return response()->json(['status' => 'ok']);
 });
 
 // Registration using GW2 API key
