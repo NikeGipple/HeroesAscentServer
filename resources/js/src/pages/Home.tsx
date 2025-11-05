@@ -255,7 +255,7 @@ export default function Home() {
               </ul>
 
               <p className="mt-3">
-                ⏱ Event from <b>Nov 4 → Nov 18, 2024</b>
+                ⏱ Event from <b>Gen XX → Gen XX, 2026</b>
                 <br />🎁 30 gold participation reward — plus 700 gold in extra prizes!
               </p>
 
