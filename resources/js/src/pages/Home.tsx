@@ -98,8 +98,6 @@ export default function Home() {
         }}
       ></motion.div>
 
-      {/* Strato 1 — nebbia in primo piano, più densa e veloce */}
-
 
       {/* Strato 2 — nebbia sullo sfondo, più leggera e lenta */}
       <motion.div
@@ -129,7 +127,10 @@ export default function Home() {
       {/* === Contenuto centrale === */}
       <motion.div
         className="position-relative text-center px-3"
-        style={{ zIndex: 30 }}
+        style={{
+          zIndex: 30,
+          transform: "translateY(-30%)",
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.5 }}
