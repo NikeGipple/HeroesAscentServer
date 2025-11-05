@@ -38,6 +38,28 @@ export default function Home() {
 
 
 
+    <motion.div
+      className="position-absolute top-0 start-0 w-100 h-100"
+      style={{
+        zIndex: 25,
+        backgroundImage: "url('/images/particles.png')",
+        backgroundRepeat: "repeat",
+        backgroundSize: "100px 100px", // dimensione tile
+        mixBlendMode: "color-dodge",
+        opacity: 0.10,
+        pointerEvents: "none",
+      }}
+      animate={{
+        backgroundPositionX: ["0%", "30%", "60%", "30%", "0%"],
+        backgroundPositionY: ["0%", "20%", "10%", "30%", "0%"],
+      }}
+      transition={{
+        duration: 90,        // ciclo molto lento e naturale
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    ></motion.div>
+
 
 
       {/* === Glow radiale === */}
