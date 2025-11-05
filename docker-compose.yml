@@ -33,9 +33,7 @@ services:
       MYSQL_USER: heroes
       MYSQL_PASSWORD: GL5nK:^P>UgG%2
     volumes:
+      # Percorso persistente reale sul server (non volume Docker)
       - /root/mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
-
-volumes:
-  db_data:
