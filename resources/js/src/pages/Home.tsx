@@ -144,6 +144,7 @@ export default function Home() {
             background: "linear-gradient(90deg, #ffd27a 0%, #fff2cc 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
+            userSelect: "none", // 👈 impedisce la selezione
           }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -159,6 +160,7 @@ export default function Home() {
             fontWeight: 400,
             color: "rgba(255,255,255,0.85)",
             textShadow: "0 0 15px rgba(255,200,100,0.4)",
+            userSelect: "none", // 👈 anche qui
           }}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
