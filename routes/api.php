@@ -6,7 +6,7 @@ use App\Http\Controllers\CharacterController;
 
 // 🔧 Test server
 Route::get('/status', function () {
-    return response()->json(['status' => 'ok']);
+    return response()->json(['status' => 'offline']);
 });
 
 // Registration using GW2 API key
