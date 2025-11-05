@@ -28,6 +28,9 @@ return new class extends Migration
             $table->unsignedInteger('last_state')->nullable();
             $table->timestamp('last_check_at')->nullable();
 
+            $table->integer('score')->default(0);
+            $table->timestamp('disqualified_at')->nullable();
+
             $table->timestamps();
             $table->softDeletes(); 
         });

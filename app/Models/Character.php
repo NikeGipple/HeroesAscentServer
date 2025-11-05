@@ -18,10 +18,17 @@ class Character extends Model
         'last_map_id',
         'last_state',
         'last_check_at',
+        'score',
+        'disqualified_at',
+    ];
+
+    protected $casts = [
+        'last_check_at' => 'datetime',
+        'disqualified_at' => 'datetime',
     ];
 
     /**
-     * Relazione con l’account proprietario.
+     * Account proprietario del personaggio.
      */
     public function account()
     {
@@ -29,23 +36,24 @@ class Character extends Model
     }
 
     /**
-     * Relazione con le violazioni registrate.
+     * Eventi (positivi o negativi) associati al personaggio.
      */
-    public function violations()
+    public function events()
     {
-        return $this->hasMany(RuleViolation::class);
+        return $this->hasMany(CharacterEvent::class);
     }
 
     /**
-     * Helper per verificare se il personaggio è “vivo”.
+     * Helper per verificare se il personaggio è vivo.
      */
     public function isAlive(): bool
     {
-        return !($this->last_state & 0x02); // esempio flag per stato "Downed/Dead"
+        // Stato 0x02 = Downed/Dead secondo RTAPI
+        return !($this->last_state & 0x02);
     }
 
     /**
-     * Helper per aggiornare lo snapshot ricevuto dall’addon.
+     * Aggiorna lo snapshot runtime ricevuto dall’addon.
      */
     public function updateSnapshot(int $mapId, int $state): void
     {
@@ -54,5 +62,39 @@ class Character extends Model
             'last_state' => $state,
             'last_check_at' => now(),
         ]);
+    }
+
+    /**
+     * Aggiunge o rimuove punti dal punteggio.
+     */
+    public function addScore(int $points): void
+    {
+        $this->increment('score', $points);
+    }
+
+    public function subtractScore(int $points): void
+    {
+        $this->decrement('score', $points);
+    }
+
+    /**
+     * Squalifica il personaggio.
+     */
+    public function disqualify(string $reason): void
+    {
+        $this->update(['disqualified_at' => now()]);
+
+        $this->events()->create([
+            'event_code' => 'DISQUALIFIED',
+            'title' => 'Personaggio squalificato',
+            'details' => $reason,
+            'points' => -999,
+            'detected_at' => now(),
+        ]);
+    }
+
+    public function isDisqualified(): bool
+    {
+        return !is_null($this->disqualified_at);
     }
 }
