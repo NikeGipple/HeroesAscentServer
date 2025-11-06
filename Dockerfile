@@ -66,7 +66,7 @@ RUN echo '<VirtualHost *:80>\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # Cron per rinnovo automatico SSL ogni 12 ore
-RUN echo '0 */12 * * * root certbot renew --quiet && service apache2 reload' >> /etc/crontab
+RUN echo '0 */12 * * * root certbot renew --quiet && apachectl -k graceful' >> /etc/crontab
 
 EXPOSE 80 10000
 
