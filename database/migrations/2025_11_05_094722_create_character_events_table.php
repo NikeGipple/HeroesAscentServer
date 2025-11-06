@@ -6,36 +6,54 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        // Rimuoviamo eventuale tabella precedente
-        Schema::dropIfExists('rule_violations');
+        Schema::dropIfExists('character_events');
 
         Schema::create('character_events', function (Blueprint $table) {
             $table->id();
 
+            // Relazione con il personaggio
             $table->foreignId('character_id')
                 ->constrained()
                 ->onDelete('cascade');
 
-            // Informazioni evento
-            $table->string('event_code', 100)->index(); // es: RULE_FOOD_001
-            $table->string('title')->nullable();        // titolo leggibile
-            $table->text('details')->nullable();        // descrizione evento
-            $table->integer('points')->default(0);      // punti guadagnati o persi
+            // Tipologia di evento (es: login, violation, score, ecc.)
+            $table->string('type', 50)->index();
+
+            // Codice tecnico dell'evento (es: RULE_FOOD_001, LOGIN_START, ecc.)
+            $table->string('event_code', 100)->nullable()->index();
+
+            // Titolo e descrizione dell'evento
+            $table->string('title')->nullable();
+            $table->text('details')->nullable();
+
+            // Dati principali di contesto al momento dell'evento
+            $table->unsignedInteger('map_id')->nullable()->index();
+            $table->unsignedTinyInteger('map_type')->nullable();
+            $table->unsignedTinyInteger('profession')->nullable();
+            $table->unsignedTinyInteger('elite_spec')->nullable();
+            $table->unsignedTinyInteger('race')->nullable();
+            $table->unsignedTinyInteger('state')->nullable();
+            $table->unsignedTinyInteger('group_type')->nullable();
+            $table->unsignedTinyInteger('group_count')->nullable();
+            $table->boolean('commander')->default(false);
+            $table->boolean('is_login')->default(false);
+
+            // Posizione (utile per analisi geografiche o di movimento)
+            $table->decimal('pos_x', 12, 6)->nullable();
+            $table->decimal('pos_y', 12, 6)->nullable();
+            $table->decimal('pos_z', 12, 6)->nullable();
+
+
             $table->timestamp('detected_at')->nullable();
 
+            // Laravel defaults
             $table->timestamps();
             $table->softDeletes();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('character_events');
