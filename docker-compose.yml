@@ -24,7 +24,7 @@ services:
 
 
   db:
-    image: mysql:8.0.33
+    image: mysql:8.0.44
     container_name: heroesascent_db
     restart: always
     environment:
@@ -39,4 +39,4 @@ services:
       bash -c "chown -R 999:999 /var/lib/mysql && exec docker-entrypoint.sh mysqld"
     ports:
       - "3306:3306"
-      
+  
