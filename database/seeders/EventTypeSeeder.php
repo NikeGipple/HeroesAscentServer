@@ -9,8 +9,6 @@ class EventTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        EventType::truncate(); // Pulisce eventuali vecchi record
-
         EventType::insert([
             // === EVENTI DI LOGIN ===
             [
