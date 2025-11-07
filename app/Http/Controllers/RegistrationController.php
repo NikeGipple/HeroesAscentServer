@@ -42,8 +42,6 @@ class RegistrationController extends Controller
                 'status' => 'ok',
                 'message' => 'already_registered',
                 'account_token' => $account->account_token,
-                'api_permissions' => $tokenInfo['permissions'] ?? [],
-                'api_name' => $tokenInfo['name'] ?? null,
             ]);
         }
 
@@ -61,8 +59,6 @@ class RegistrationController extends Controller
             'status' => 'ok',
             'message' => 'registered',
             'account_token' => $accountToken,
-            'api_permissions' => $tokenInfo['permissions'] ?? [],
-            'api_name' => $tokenInfo['name'] ?? null,
         ]);
     }
 }
