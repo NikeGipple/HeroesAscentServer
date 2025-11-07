@@ -14,11 +14,11 @@ class CharacterController extends Controller
 
 public function update(Request $request)
 {
-    // === Log for debug ===
-    Log::info("=== Incoming Character Update ===", [
-        'ip'      => $request->ip(),
-        'payload' => $request->all(),
-    ]);
+    // // === Log for debug ===
+    // Log::info("=== Incoming Character Update ===", [
+    //     'ip'      => $request->ip(),
+    //     'payload' => $request->all(),
+    // ]);
 
     $data = $request->validate([
         'token'    => 'required|string',
@@ -103,5 +103,5 @@ public function update(Request $request)
         "rules_valid" => $rulesValid,
     ]);
 }
-
++++++++
 }
