@@ -1,29 +1,70 @@
-Heroes Ascent Server
-<div align="center">
+<h1 align="center">Heroes Ascent Server</h1>
 
-<strong>Backend system for the Guild Wars 2 community competition <em>Heroes Ascent</em>, powered by L’Arco del Leone.</strong>
-<br><br>
+<p align="center">
+  <strong>Backend system for the Guild Wars 2 community competition <em>Heroes Ascent</em>, powered by L’Arco del Leone.</strong>
+</p>
 
-<a href="https://github.com/larcodelleone/heroes-ascent-server/actions"> <img src="https://github.com/larcodelleone/heroes-ascent-server/workflows/tests/badge.svg" alt="Build Status"> </a> <a href="https://github.com/larcodelleone/heroes-ascent-server/releases"> <img src="https://img.shields.io/github/v/release/larcodelleone/heroes-ascent-server" alt="Latest Release"> </a> <a href="https://www.php.net/"> <img src="https://img.shields.io/badge/PHP-%5E8.3-blue" alt="PHP"> </a> <a href="https://laravel.com/"> <img src="https://img.shields.io/badge/Laravel-11-red" alt="Laravel"> </a> <a href="https://github.com/larcodelleone/heroes-ascent-server"> <img src="https://img.shields.io/github/license/larcodelleone/heroes-ascent-server" alt="License"> </a> </div>
-Overview
 
-Heroes Ascent Server is the backend core of the Heroes Ascent competition —
-a Guild Wars 2 event where players must level a new character from level 0 to 80 under strict and transparent rules.
+<hr>
 
-The server connects directly to the Heroes Ascent Addon (C++ client using RTAPI and ImGui) to receive live player data, validate compliance with the event rules, and log any violations.
+<h2>Overview</h2>
 
-Features
+<p>
+  <strong>Heroes Ascent Server</strong> is the backend core of the <em>Heroes Ascent</em> competition —
+  a Guild Wars 2 event where players must level a new character from level 0 to 80 under strict and transparent rules.
+</p>
 
-        Secure Registration — Players register with their Guild Wars 2 API key and receive a unique account token.
-        Real-Time Telemetry — The server collects game data directly from the addon (map, combat, state).
-        Rule Validation — Detects forbidden actions such as mounts, gliding, healing, or group use.
-        Structured Logging — Each update is recorded for transparency and review.
-        Leaderboard Support — Can be integrated with public leaderboard APIs for ranking.
+<p>
+  The server connects directly to the <strong>Heroes Ascent Addon</strong> (C++ client using RTAPI and ImGui)
+  to receive live player data, validate compliance with the event rules, and log any violations.
+</p>
 
-Architecture
-        Component	Technology
-        Framework	Laravel 11 (PHP 8.3+)
-        Database	MySQL 8
-        Containerization	Docker
-        Protocol	RTAPI-based JSON
-        Client	Heroes Ascent Addon (C++ / ImGui)
+<hr>
+
+<h2>Features</h2>
+
+<ul>
+  <li><strong>Secure Registration</strong> — Players register with their Guild Wars 2 API key and receive a unique account token.</li>
+  <li><strong>Real-Time Telemetry</strong> — The server collects game data directly from the addon (map, combat, state).</li>
+  <li><strong>Rule Validation</strong> — Detects forbidden actions such as mounts, gliding, healing, or group use.</li>
+  <li><strong>Structured Logging</strong> — Each update is recorded for transparency and review.</li>
+  <li><strong>Leaderboard Support</strong> — Can be integrated with public leaderboard APIs for ranking.</li>
+</ul>
+
+<hr>
+
+<h2>Architecture</h2>
+
+<table>
+  <tr><th>Component</th><th>Technology</th></tr>
+  <tr><td>Framework</td><td>Laravel 12 (PHP 8.3+)</td></tr>
+  <tr><td>Database</td><td>MySQL 8</td></tr>
+  <tr><td>Containerization</td><td>Docker</td></tr>
+  <tr><td>Protocol</td><td>JSON</td></tr>
+  <tr><td>Client</td><td>Heroes Ascent Addon (C++ / ImGui)</td></tr>
+</table>
+
+
+<h2>Community</h2>
+
+<p>
+  This project is part of <strong>L’Arco del Leone</strong>, the main Italian Guild Wars 2 community hub.<br>
+  Join us to follow community events, guides, and livestreams:
+</p>
+
+
+<h2>Security</h2>
+
+<p>
+  If you discover a security vulnerability, please contact us <br>
+
+</p>
+
+<hr>
+
+<h2>License</h2>
+
+<p>
+  The <strong>Heroes Ascent Server</strong> is open-source software licensed under the <strong>MIT License</strong>.<br>
+  © 2025 L’Arco del Leone — Heroes Ascent Project.
+</p>
