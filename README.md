@@ -1,6 +1,6 @@
-<h1 align="center">Heroes Ascent Server</h1>
+<h1 >Heroes Ascent Server</h1>
 
-<p align="center">
+<p >
   <strong>Backend system for the Guild Wars 2 community competition <em>Heroes Ascent</em>, powered by L’Arco del Leone.</strong>
 </p>
 
