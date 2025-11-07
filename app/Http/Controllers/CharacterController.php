@@ -11,8 +11,6 @@ use App\Models\EventType;
 
 class CharacterController extends Controller
 {
-    use App\Models\EventType;
-
     public function update(Request $request)
     {
         // // === Log for debug ===
