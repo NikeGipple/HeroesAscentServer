@@ -28,15 +28,12 @@ services:
     container_name: heroesascent_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ascesadeglieroi
       MYSQL_DATABASE: heroesascent
       MYSQL_USER: heroes
-      MYSQL_PASSWORD: GL5nK:^P>UgG%2
+      MYSQL_PASSWORD: GL5nKPUgG2ZVF56
     volumes:
-      # Percorso persistente reale sul server (non volume Docker)
       - /srv/docker/mysql/heroesascent:/var/lib/mysql
-    entrypoint: >
-      bash -c "chown -R 999:999 /var/lib/mysql && exec docker-entrypoint.sh mysqld"
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
   

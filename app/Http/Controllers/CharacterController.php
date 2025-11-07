@@ -74,7 +74,7 @@ class CharacterController extends Controller
             $type = 'death';
             $context['details'] = 'The character has died.';
         } elseif ($request->boolean('is_login')) {
-            $eventCode = 'LOGIN_START';
+            $eventCode = 'LOGIN';
             $type = 'login';
             $context['details'] = 'Initial login event detected.';
         } else {
