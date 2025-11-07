@@ -103,5 +103,4 @@ public function update(Request $request)
         "rules_valid" => $rulesValid,
     ]);
 }
-+++++++
 }
