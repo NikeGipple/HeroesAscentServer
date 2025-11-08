@@ -14,13 +14,13 @@ class EventType extends Model
         'name',
         'description',
         'category',
-        'default_points',
+        'points',
         'is_critical',
         'color',
     ];
 
     public function events()
     {
-        return $this->hasMany(CharacterEvent::class);
+        return $this->hasMany(CharacterEvent::class, 'event_code', 'code');
     }
 }

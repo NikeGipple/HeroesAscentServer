@@ -10,65 +10,82 @@ class EventTypeSeeder extends Seeder
     public function run(): void
     {
         EventType::insert([
-            // === EVENTI DI LOGIN ===
+            // === LOGIN ===
             [
                 'code' => 'LOGIN',
                 'name' => 'Login',
                 'description' => 'Accesso iniziale del personaggio',
                 'category' => 'login',
-                'default_points' => 0,
+                'points' => 0,
                 'is_critical' => false,
                 'color' => 'info',
             ],
 
-            // === EVENTI DI STATO ===
-            [
-                'code' => 'STATUS_UPDATE',
-                'name' => 'Aggiornamento stato',
-                'description' => 'Aggiornamento periodico dello stato del personaggio',
-                'category' => 'info',
-                'default_points' => 0,
-                'is_critical' => false,
-                'color' => 'secondary',
-            ],
-
+            // === STATO PERSONAGGIO ===
             [
                 'code' => 'DOWNED',
                 'name' => 'Downed',
                 'description' => 'Il personaggio è stato atterrato (downed)',
                 'category' => 'death',
-                'default_points' => -99999,
+                'points' => -99999,
                 'is_critical' => true,
                 'color' => 'warning',
             ],
-
             [
-                'code' => 'DEATH',
+                'code' => 'DEAD',
                 'name' => 'Morte',
-                'description' => 'Il personaggio è morto durante la prova',
+                'description' => 'Il personaggio è morto definitivamente',
                 'category' => 'death',
-                'default_points' => -99999,
+                'points' => -99999,
                 'is_critical' => true,
                 'color' => 'danger',
             ],
+            [
+                'code' => 'RESPAWN',
+                'name' => 'Respawn',
+                'description' => 'Il personaggio è rinato dopo la morte',
+                'category' => 'info',
+                'points' => 0,
+                'is_critical' => false,
+                'color' => 'secondary',
+            ],
 
-            // === EVENTI DI VIOLAZIONE REGOLAMENTO ===
+            // === MOVIMENTO / CAMBI MAPPPA / MOUNT ===
+            [
+                'code' => 'MAP_CHANGED',
+                'name' => 'Cambio mappa',
+                'description' => 'Il personaggio è passato ad un altra mappa',
+                'category' => 'movement',
+                'points' => 0,
+                'is_critical' => false,
+                'color' => 'primary',
+            ],
+            [
+                'code' => 'MOUNT_CHANGED',
+                'name' => 'Cambio mount',
+                'description' => 'Il personaggio ha usato una mount',
+                'category' => 'movement',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'secondary',
+            ],
+
+            // === VIOLAZIONI REGOLAMENTO ===
             [
                 'code' => 'RULE_FOOD_001',
                 'name' => 'Uso di Cibo',
                 'description' => 'Ha consumato cibo o booster durante la prova',
                 'category' => 'violation',
-                'default_points' => -100,
+                'points' => -100,
                 'is_critical' => true,
                 'color' => 'danger',
             ],
-
             [
                 'code' => 'DISQUALIFIED',
                 'name' => 'Squalifica',
                 'description' => 'Violazione grave: personaggio squalificato',
                 'category' => 'violation',
-                'default_points' => -99999,
+                'points' => -99999,
                 'is_critical' => true,
                 'color' => 'danger',
             ],
