@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('category', 50)->default('info')->index();
-            $table->integer('default_points')->default(0);
+            $table->integer('points')->default(0);
             $table->boolean('is_critical')->default(false);
             $table->string('color', 20)->nullable();
             $table->timestamps();
