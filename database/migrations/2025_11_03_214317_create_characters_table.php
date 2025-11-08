@@ -14,25 +14,26 @@ return new class extends Migration
         Schema::create('characters', function (Blueprint $table) {
             $table->id();
 
+            // Relazione con l'account proprietario
             $table->foreignId('account_id')
                 ->constrained()
                 ->onDelete('cascade');
 
             // Dati base del personaggio
-            $table->string('name');                        // nome in game
-            $table->unsignedInteger('level')->nullable();  // livello attuale
-            $table->string('profession')->nullable();      // professione GW2 (es: Warrior, Mesmer…)
+            $table->string('name')->index();               
+            $table->unsignedInteger('level')->nullable();  
+            $table->string('profession')->nullable();      
 
-            // Dati runtime usati dall’addon
-            $table->unsignedInteger('last_map_id')->nullable();
-            $table->unsignedInteger('last_state')->nullable();
-            $table->timestamp('last_check_at')->nullable();
+            // Dati runtime
+            $table->timestamp('last_check_at')->nullable(); 
 
-            $table->integer('score')->default(0);
-            $table->timestamp('disqualified_at')->nullable();
+            // Stato del personaggio nel contesto dell'evento
+            $table->integer('score')->default(0);           
+            $table->timestamp('disqualified_at')->nullable(); 
 
+            // Metadati Laravel
             $table->timestamps();
-            $table->softDeletes(); 
+            $table->softDeletes();
         });
     }
 

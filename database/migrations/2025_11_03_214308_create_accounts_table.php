@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('accounts', function (Blueprint $table) {
             $table->id();
-            $table->string('api_key')->unique();    
+            $table->string('api_key')->unique();
+            $table->uuid('account_token')->unique();
             $table->boolean('active')->default(true);
             $table->timestamps();
             $table->softDeletes();
         });
     }
-
 
     /**
      * Reverse the migrations.

@@ -85,6 +85,7 @@ class CharacterController extends Controller
         // controlli specifici
         switch ($eventCode) {
             case 'LOGIN':
+                // richiediamo esplicitamente is_login=true se presente, ma non lo consideriamo obbligatorio assoluto
                 if (array_key_exists('is_login', $data) && !$request->boolean('is_login')) {
                     $errors[] = 'Payload says event=LOGIN but is_login flag is false';
                 }

@@ -18,17 +18,14 @@ return new class extends Migration
                 ->constrained()
                 ->onDelete('cascade');
 
-            // Tipologia di evento (es: login, violation, score, ecc.)
-            $table->string('type', 50)->index();
+            // Codice tecnico dell'evento (es. LOGIN, DOWNED, DEAD…)
+            $table->string('event_code', 100)->index();
 
-            // Codice tecnico dell'evento (es: RULE_FOOD_001, LOGIN_START, ecc.)
-            $table->string('event_code', 100)->nullable()->index();
-
-            // Titolo e descrizione dell'evento
+            // Titolo e descrizione
             $table->string('title')->nullable();
             $table->text('details')->nullable();
 
-            // Dati principali di contesto al momento dell'evento
+            // Dati di contesto
             $table->unsignedInteger('map_id')->nullable()->index();
             $table->unsignedTinyInteger('map_type')->nullable();
             $table->unsignedTinyInteger('profession')->nullable();
@@ -40,15 +37,18 @@ return new class extends Migration
             $table->boolean('commander')->default(false);
             $table->boolean('is_login')->default(false);
 
-            // Posizione (utile per analisi geografiche o di movimento)
+            // Posizione del personaggio
             $table->decimal('pos_x', 12, 6)->nullable();
             $table->decimal('pos_y', 12, 6)->nullable();
             $table->decimal('pos_z', 12, 6)->nullable();
 
+            // Punteggio assegnato (derivato da EventType.points)
+            $table->integer('points')->default(0);
 
+            // Timestamp dell’evento
             $table->timestamp('detected_at')->nullable();
 
-            // Laravel defaults
+            // Default Laravel
             $table->timestamps();
             $table->softDeletes();
         });

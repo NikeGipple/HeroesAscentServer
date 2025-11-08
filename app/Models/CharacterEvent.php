@@ -15,7 +15,6 @@ class CharacterEvent extends Model
 
     protected $fillable = [
         'character_id',
-        'type',
         'event_code',
         'title',
         'details',
@@ -32,7 +31,7 @@ class CharacterEvent extends Model
         'pos_x',
         'pos_y',
         'pos_z',
-        'detected_at', // 'points' viene gestito internamente
+        'detected_at', 
     ];
 
     protected $casts = [
@@ -68,7 +67,6 @@ class CharacterEvent extends Model
             $event = self::create(array_merge($context, [
                 'character_id' => $character->id,
                 'event_code'   => $code,
-                'type'         => $eventType->category,
                 'detected_at'  => $context['detected_at'] ?? now(),
             ]));
 
