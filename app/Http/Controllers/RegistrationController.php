@@ -23,11 +23,7 @@ class RegistrationController extends Controller
         $apiKey = $request->input('api_key');
         $accountName = $request->input('account_name');
 
-        // Recupera i punti stimati
-        $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
 
-        // Logghiamo solo i punti (senza bloccare)
-        Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
 
         if (empty($apiKey)) {
             return response()->json([
@@ -47,6 +43,11 @@ class RegistrationController extends Controller
                 'message' => 'Invalid API key'
             ], 401);
         }
+
+        // Recupera i punti stimati
+        Log::info("DEBUG — chiamata a Gw2ApiService avviata");
+        $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
+        Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
 
         // Se la chiave è valida, ottieni info base
         $tokenInfo = $response->json();
