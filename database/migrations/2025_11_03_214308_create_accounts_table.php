@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('api_key')->unique();
             $table->uuid('account_token')->unique();
+            $table->string('account_name', 140)->nullable();
             $table->boolean('active')->default(true);
+
             $table->timestamps();
             $table->softDeletes();
         });

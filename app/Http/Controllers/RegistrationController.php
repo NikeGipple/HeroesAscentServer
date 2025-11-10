@@ -12,6 +12,7 @@ class RegistrationController extends Controller
     public function register(Request $request)
     {
         $apiKey = $request->input('api_key');
+        $accountName = $request->input('account_name');
 
         if (empty($apiKey)) {
             return response()->json([
@@ -52,6 +53,7 @@ class RegistrationController extends Controller
         $account = Account::create([
             'api_key' => $apiKey,
             'account_token' => $accountToken,
+            'account_name' => $accountName,
             'active' => true,
         ]);
 
