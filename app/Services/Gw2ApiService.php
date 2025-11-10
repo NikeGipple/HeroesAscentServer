@@ -183,6 +183,12 @@ class Gw2ApiService
                     $tiers = $a['tiers'] ?? [];
                     return collect($tiers)->sum('points');
                 });
+
+                // === controllo soglia 2500 AP ===
+                if ($total > 2500) {
+                    Log::warning("Interruzione: API key {$apiKey} ha superato il limite di 2500 Achievement Points.");
+                    throw new \RuntimeException("L'account supera il limite di 2500 Achievement Points.");
+                }
             }
 
             Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
