@@ -1,4 +1,4 @@
 export const app = {
-    version: 'β - 0.001.20251111'
+    version: 'β - 0.002.20251111'
 
 }

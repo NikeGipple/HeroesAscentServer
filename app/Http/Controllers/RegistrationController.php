@@ -10,9 +10,16 @@ use App\Models\Account;
 class RegistrationController extends Controller
 {
     public function register(Request $request)
-    {
+    {   
+        Log::info("=== Incoming Character Registration ===", [
+            'ip'      => $request->ip(),
+            'payload' => $request->all(),
+        ]);
+
         $apiKey = $request->input('api_key');
         $accountName = $request->input('account_name');
+
+        
 
         if (empty($apiKey)) {
             return response()->json([
