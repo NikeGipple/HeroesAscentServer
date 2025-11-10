@@ -5,18 +5,25 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 /**
  * Servizio per interfacciarsi con le API pubbliche di Guild Wars 2.
+ * Conforme alle best practices ArenaNet:
+ *  - Rate limit: 300 burst, 5/sec
+ *  - Cache incrementale
+ *  - Retry e timeout robusti
  */
 class Gw2ApiService
 {
     /**
-     * Effettua una chiamata sicura alle API GW2 
+     * Effettua una chiamata sicura alle API GW2 con gestione automatica di:
+     * rate limit, retry, timeout e header Retry-After.
      */
     private static function safeRequest(string $url, string $apiKey = null, array $params = [], int $timeout = 30)
     {
         static $lastRequestTime = 0;
+        static $requestCount = 0;
 
         // Limita a 5 richieste/sec (0.2s di intervallo)
         $elapsed = microtime(true) - $lastRequestTime;
@@ -24,6 +31,7 @@ class Gw2ApiService
             usleep((0.2 - $elapsed) * 1_000_000);
         }
         $lastRequestTime = microtime(true);
+        $requestCount++;
 
         try {
             $response = Http::withOptions(['timeout' => $timeout])
@@ -35,7 +43,7 @@ class Gw2ApiService
                 $retryAfter = (int) $response->header('Retry-After', 5);
                 Log::warning("GW2 API rate limit 429: attendo {$retryAfter}s...");
                 sleep($retryAfter);
-                return self::safeRequest($url, $apiKey, $params);
+                return self::safeRequest($url, $apiKey, $params, $timeout);
             }
 
             if ($response->failed()) {
@@ -78,36 +86,38 @@ class Gw2ApiService
 
     /**
      * Calcola (in modo stimato) il totale degli Achievement Points.
-     * Include paginazione, batching e cache (10 minuti).
+     * Include paginazione, batching, rate limit e cache incrementale.
      */
     public static function getAchievementPoints(string $apiKey): int
     {
-        return Cache::remember("gw2_ap_total_{$apiKey}", now()->addMinutes(10), function () use ($apiKey) {
-            $doneIds = collect();
+        $cacheKey = "gw2_ap_total_{$apiKey}";
+        $partialKey = "gw2_ap_partial_{$apiKey}";
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($apiKey, $partialKey) {
+            $doneIds = Cache::get($partialKey, collect());
             $page = 0;
             $pageSize = 200;
-
             $start = microtime(true);
+
+            Log::info("Inizio calcolo Achievement Points per API key {$apiKey} (parziale: " . $doneIds->count() . ")");
+
             $previousIds = collect();
 
-            Log::info("Inizio calcolo Achievement Points per API key {$apiKey}");
-
             while (true) {
-                // Interruzione dopo 90s totali
-                if (microtime(true) - $start > 90) {
-                    Log::warning("Stop automatico: superato limite 90s totali per /account/achievements");
+                // Interruzione dopo 300s totali
+                if (microtime(true) - $start > 300) {
+                    Log::warning("Stop automatico: superato limite 300s totali per /account/achievements");
                     break;
                 }
 
-                // Stop di sicurezza: massimo 20 pagine (≈4000 achievements)
-                if ($page >= 20) {
-                    Log::warning("Stop automatico: raggiunto limite massimo di 20 pagine");
+                // Stop di sicurezza: massimo 25 pagine (~5000 achievements)
+                if ($page >= 25) {
+                    Log::warning("Stop automatico: raggiunto limite massimo di 25 pagine");
                     break;
                 }
 
                 Log::info("Richiesta pagina {$page} di /account/achievements...");
                 $startPage = microtime(true);
-
                 $data = self::safeRequest(
                     'https://api.guildwars2.com/v2/account/achievements',
                     $apiKey,
@@ -119,7 +129,6 @@ class Gw2ApiService
                 $count = $data ? count($data) : 0;
                 Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
 
-                // Se la pagina è vuota o errore
                 if (!$data || $count === 0) {
                     Log::warning("Pagina {$page} vuota o non valida — fine dataset.");
                     break;
@@ -128,16 +137,18 @@ class Gw2ApiService
                 // Estrai achievements completati
                 $chunk = collect($data)->where('done', true)->pluck('id');
 
-                // Se pagina identica alla precedente → probabile loop infinito
+                // Stop se la pagina è identica alla precedente (loop)
                 if ($chunk->diff($previousIds)->isEmpty()) {
-                    Log::warning("Pagina {$page} duplicata (stessi achievement della precedente) — stop loop.");
+                    Log::warning("Pagina {$page} duplicata — stop per loop API.");
                     break;
                 }
 
                 $doneIds = $doneIds->merge($chunk);
                 $previousIds = $chunk;
 
-                // Se la pagina contiene meno del page_size → ultima pagina
+                // Salva cache incrementale ogni pagina
+                Cache::put($partialKey, $doneIds, 600);
+
                 if ($count < $pageSize) {
                     Log::info("Pagina {$page} incompleta ({$count}/{$pageSize}) — fine dataset.");
                     break;
@@ -146,13 +157,15 @@ class Gw2ApiService
                 $page++;
             }
 
-            if ($doneIds->isNotEmpty()) {
-                Log::info("Raccolti " . $doneIds->count() . " achievement completati (parziale o completo).");
+            if ($doneIds->isEmpty()) {
+                Log::info("Nessun achievement completato trovato per questa API key.");
+                return 0;
             }
 
+            Log::info("Raccolti " . $doneIds->count() . " achievements completati (inizio calcolo punti).");
 
             $total = 0;
-            foreach ($doneIds->chunk(100) as $chunk) {
+            foreach ($doneIds->chunk(50) as $chunk) {
                 Log::info("Richiesta dettagli achievements per " . count($chunk) . " ID...");
                 $details = self::safeRequest(
                     'https://api.guildwars2.com/v2/achievements',
@@ -161,7 +174,10 @@ class Gw2ApiService
                     60
                 );
 
-                if (!$details) continue;
+                if (!$details) {
+                    Log::warning("Errore o timeout nel batch da " . count($chunk) . " ID.");
+                    continue;
+                }
 
                 $total += collect($details)->sum(function ($a) {
                     $tiers = $a['tiers'] ?? [];
@@ -170,6 +186,10 @@ class Gw2ApiService
             }
 
             Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
+
+            // Cancella cache parziale (completato)
+            Cache::forget($partialKey);
+
             return (int) $total;
         });
     }
