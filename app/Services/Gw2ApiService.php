@@ -18,8 +18,7 @@ class Gw2ApiService
     {
         static $lastRequestTime = 0;
 
-        // === Rate limiting locale ===
-        // Max 5 richieste/sec ovvero una ogni 0.2s
+        // Limita a 5 richieste/sec (0.2s di intervallo)
         $elapsed = microtime(true) - $lastRequestTime;
         if ($elapsed < 0.2) {
             usleep((0.2 - $elapsed) * 1_000_000);
@@ -27,25 +26,16 @@ class Gw2ApiService
         $lastRequestTime = microtime(true);
 
         try {
-            $response = Http::withOptions(['timeout' => 30])
+            $response = Http::withOptions(['timeout' => 60])
                 ->retry(2, 2000)
                 ->when($apiKey, fn($req) => $req->withToken($apiKey))
                 ->get($url, $params);
 
-            // === Gestione Rate Limit ===
             if ($response->status() === 429) {
                 $retryAfter = (int) $response->header('Retry-After', 5);
-                Log::warning("GW2 API rate limit: 429 Too Many Requests. Attesa {$retryAfter}s...");
+                Log::warning("GW2 API rate limit 429: attendo {$retryAfter}s...");
                 sleep($retryAfter);
                 return self::safeRequest($url, $apiKey, $params);
-            }
-
-            // Se header X-Rate-Limit-Remaining è a 0, rispetta il reset
-            $remaining = (int) $response->header('X-Rate-Limit-Remaining', 1);
-            if ($remaining <= 0) {
-                $reset = (int) $response->header('X-Rate-Limit-Reset', 5);
-                Log::info("GW2 API: esaurite le richieste disponibili. Pausa {$reset}s...");
-                sleep($reset);
             }
 
             if ($response->failed()) {
@@ -97,25 +87,34 @@ class Gw2ApiService
             $page = 0;
             $pageSize = 200;
 
+            $start = microtime(true);
             Log::info("Inizio calcolo Achievement Points per API key {$apiKey}");
 
             while (true) {
+                // interruzione dopo 20s totali
+                if (microtime(true) - $start > 20) {
+                    Log::warning("Interruzione automatica: superato limite 20s per /account/achievements");
+                    break;
+                }
+
+                Log::info("Richiesta pagina {$page} di /account/achievements...");
                 $data = self::safeRequest(
                     'https://api.guildwars2.com/v2/account/achievements',
                     $apiKey,
                     ['page' => $page, 'page_size' => $pageSize]
                 );
 
-                if (!$data) {
-                    Log::warning("Nessun dato da /account/achievements (page {$page})");
-                    break;
-                }
+                $count = $data ? count($data) : 0;
+                Log::info("Pagina {$page} completata ({$count} record).");
+
+                if (!$data || $count === 0) break;
 
                 $chunk = collect($data)->where('done', true)->pluck('id');
                 if ($chunk->isEmpty()) break;
 
                 $doneIds = $doneIds->merge($chunk);
-                if (count($data) < $pageSize) break;
+
+                if ($count < $pageSize) break;
                 $page++;
             }
 
@@ -126,6 +125,7 @@ class Gw2ApiService
 
             $total = 0;
             foreach ($doneIds->chunk(200) as $chunk) {
+                Log::info("Richiesta dettagli achievements per " . count($chunk) . " ID...");
                 $details = self::safeRequest(
                     'https://api.guildwars2.com/v2/achievements',
                     null,
