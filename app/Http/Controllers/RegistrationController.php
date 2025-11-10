@@ -27,7 +27,7 @@ class RegistrationController extends Controller
             ], 400);
         }
 
-        // ✅ Verifica validità API key tramite Gw2ApiService
+        // ✅ 1. Verifica validità API key tramite Gw2ApiService
         try {
             $tokenInfo = Gw2ApiService::getTokenInfo($apiKey);
 
@@ -46,14 +46,43 @@ class RegistrationController extends Controller
                 ], 401);
             }
         } catch (\Throwable $e) {
-            Log::warning("Errore recuperando tokeninfo: " . $e->getMessage());
+            Log::warning("GW2 API error (tokeninfo): " . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => 'Servizi Guild Wars 2 temporaneamente non disponibili.'
             ], 503);
         }
 
-        // ✅ Recupera i punti Achievement stimati
+        // ✅ 2. Verifica che l’account dichiarato corrisponda a quello ufficiale di ArenaNet
+        try {
+            $accountData = Gw2ApiService::getAccount($apiKey);
+
+            if (!$accountData || empty($accountData['name'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Impossibile verificare il nome account tramite API ufficiale.'
+                ], 503);
+            }
+
+            if (strcasecmp($accountData['name'], $accountName) !== 0) {
+                Log::warning("Account name mismatch: API={$accountData['name']} vs Provided={$accountName}");
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Il nome account fornito non corrisponde al proprietario della API key.'
+                ], 403);
+            }
+
+            Log::info("Verifica nome account riuscita per {$accountData['name']}");
+        } catch (\Throwable $e) {
+            Log::error("GW2 API error (account verification): " . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Errore durante la verifica del nome account. Riprova più tardi.'
+            ], 503);
+        }
+
+
+        // ✅ 3. Recupera e controlla i punti Achievement
         Log::info("DEBUG — chiamata a Gw2ApiService avviata");
 
         try {
@@ -68,8 +97,11 @@ class RegistrationController extends Controller
             ], 403);
         }
 
-        // ✅ Se l'account esiste già, restituisci il token esistente
-        $account = Account::where('api_key', $apiKey)->first();
+        // ✅ 4. Se l'account esiste già, restituisci il token esistente
+        $account = Account::where('api_key', $apiKey)
+            ->orWhere('account_name', $accountName)
+            ->first();
+
         if ($account) {
             return response()->json([
                 'status' => 'ok',
