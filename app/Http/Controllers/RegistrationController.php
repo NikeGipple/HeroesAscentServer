@@ -46,8 +46,18 @@ class RegistrationController extends Controller
 
         // Recupera i punti stimati
         Log::info("DEBUG — chiamata a Gw2ApiService avviata");
-        $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
-        Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
+
+        try {
+            $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
+            Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
+        } catch (\RuntimeException $e) {
+            Log::warning("Registrazione interrotta per API key {$apiKey}: {$e->getMessage()}");
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Account non idoneo: supera i 2500 Achievement Points consentiti.'
+            ], 403);
+        }
 
         // Se la chiave è valida, ottieni info base
         $tokenInfo = $response->json();
