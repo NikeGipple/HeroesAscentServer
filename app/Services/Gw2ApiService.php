@@ -91,8 +91,7 @@ class Gw2ApiService
             Log::info("Inizio calcolo Achievement Points per API key {$apiKey}");
 
             while (true) {
-                // interruzione dopo 20s totali
-                if (microtime(true) - $start > 20) {
+                if (microtime(true) - $start > 90) {
                     Log::warning("Interruzione automatica: superato limite 20s per /account/achievements");
                     break;
                 }
