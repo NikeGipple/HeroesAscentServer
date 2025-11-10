@@ -23,42 +23,49 @@ class Gw2ApiService
     private static function safeRequest(string $url, string $apiKey = null, array $params = [], int $timeout = 30)
     {
         static $lastRequestTime = 0;
-        static $requestCount = 0;
 
-        // Limita a 5 richieste/sec (0.2s di intervallo)
+        // Throttle 5 req/sec
         $elapsed = microtime(true) - $lastRequestTime;
-        if ($elapsed < 0.2) {
-            usleep((0.2 - $elapsed) * 1_000_000);
-        }
+        if ($elapsed < 0.2) usleep((0.2 - $elapsed) * 1_000_000);
         $lastRequestTime = microtime(true);
-        $requestCount++;
 
         try {
             $response = Http::withOptions(['timeout' => $timeout])
-                ->retry(2, 2000)
+                // retry(count, sleepMs, when)
+                ->retry(3, 1000, function ($exception, $request) {
+                    // Ritenta su errori di rete/timeout e 5xx
+                    if (method_exists($exception, 'getCode') && $exception->getCode() === 0) {
+                        return true; // es. cURL 28
+                    }
+                    $res = method_exists($exception, 'response') ? $exception->response() : null;
+                    $status = $res ? $res->status() : null;
+                    return in_array($status, [500, 502, 503, 504]);
+                })
                 ->when($apiKey, fn($req) => $req->withToken($apiKey))
                 ->get($url, $params);
 
+            // 429: rispetta Retry-After e riprova
             if ($response->status() === 429) {
                 $retryAfter = (int) $response->header('Retry-After', 5);
-                Log::warning("GW2 API rate limit 429: attendo {$retryAfter}s...");
                 sleep($retryAfter);
+                // jitter minimo
+                usleep(random_int(50_000, 150_000));
                 return self::safeRequest($url, $apiKey, $params, $timeout);
             }
 
             if ($response->failed()) {
-                Log::warning("Chiamata fallita a {$url} ({$response->status()})", [
-                    'body' => $response->body(),
-                ]);
+                // Non restituire JSON su failed, segnala null
+                \Log::warning("Chiamata fallita a {$url}: HTTP ".$response->status());
                 return null;
             }
 
             return $response->json();
-        } catch (\Exception $e) {
-            Log::warning("Errore chiamando {$url}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            \Log::warning("Errore chiamando {$url}: ".$e->getMessage());
             return null;
         }
     }
+
 
     /**
      * Recupera le informazioni di una API key e i permessi associati.
@@ -90,115 +97,112 @@ class Gw2ApiService
      */
     public static function getAchievementPoints(string $apiKey): int
     {
-        $cacheKey = "gw2_ap_total_{$apiKey}";
+        $cacheKey   = "gw2_ap_total_{$apiKey}";
         $partialKey = "gw2_ap_partial_{$apiKey}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($apiKey, $partialKey) {
-            $doneIds = Cache::get($partialKey, collect());
-            $page = 0;
-            $pageSize = 200;
-            $start = microtime(true);
+        // se esiste cache valida, usa quella
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) return (int) $cached;
 
-            Log::info("Inizio calcolo Achievement Points per API key {$apiKey} (parziale: " . $doneIds->count() . ")");
+        $doneIds   = Cache::get($partialKey, collect());
+        $page      = 0;
+        $pageSize  = 200;
+        $start     = microtime(true);
+        $hadError  = false; // <— traccia errori per evitare cache 0
 
-            $previousIds = collect();
+        Log::info("Inizio calcolo Achievement Points per API key {$apiKey} (parziale: ".$doneIds->count().")");
+        $previousIds = collect();
 
-            while (true) {
-                // Interruzione dopo 300s totali
-                if (microtime(true) - $start > 300) {
-                    Log::warning("Stop automatico: superato limite 300s totali per /account/achievements");
-                    break;
-                }
+        while (true) {
+            if (microtime(true) - $start > 300) { Log::warning("Stop: >300s"); break; }
+            if ($page >= 25) { Log::warning("Stop: >25 pagine"); break; }
 
-                // Stop di sicurezza: massimo 25 pagine (~5000 achievements)
-                if ($page >= 25) {
-                    Log::warning("Stop automatico: raggiunto limite massimo di 25 pagine");
-                    break;
-                }
+            Log::info("Richiesta pagina {$page} di /account/achievements...");
+            $startPage = microtime(true);
+            $data = self::safeRequest(
+                'https://api.guildwars2.com/v2/account/achievements',
+                $apiKey,
+                ['page' => $page, 'page_size' => $pageSize],
+                60
+            );
+            $elapsedPage = round(microtime(true) - $startPage, 2);
+            $count = $data ? count($data) : 0;
+            Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
 
-                Log::info("Richiesta pagina {$page} di /account/achievements...");
-                $startPage = microtime(true);
-                $data = self::safeRequest(
-                    'https://api.guildwars2.com/v2/account/achievements',
-                    $apiKey,
-                    ['page' => $page, 'page_size' => $pageSize],
-                    60
-                );
-
-                $elapsedPage = round(microtime(true) - $startPage, 2);
-                $count = $data ? count($data) : 0;
-                Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
-
-                if (!$data || $count === 0) {
-                    Log::warning("Pagina {$page} vuota o non valida — fine dataset.");
-                    break;
-                }
-
-                // Estrai achievements completati
-                $chunk = collect($data)->where('done', true)->pluck('id');
-
-                // Stop se la pagina è identica alla precedente (loop)
-                if ($chunk->diff($previousIds)->isEmpty()) {
-                    Log::warning("Pagina {$page} duplicata — stop per loop API.");
-                    break;
-                }
-
-                $doneIds = $doneIds->merge($chunk);
-                $previousIds = $chunk;
-
-                // Salva cache incrementale ogni pagina
-                Cache::put($partialKey, $doneIds, 600);
-
-                if ($count < $pageSize) {
-                    Log::info("Pagina {$page} incompleta ({$count}/{$pageSize}) — fine dataset.");
-                    break;
-                }
-
-                $page++;
+            if (!$data) {
+                $hadError = true; // <— segna errore remoto (es. 502)
+                Log::warning("Pagina {$page} non valida (null) — stop dataset.");
+                break;
+            }
+            if ($count === 0) {
+                Log::warning("Pagina {$page} vuota — fine dataset.");
+                break;
             }
 
-            if ($doneIds->isEmpty()) {
-                Log::info("Nessun achievement completato trovato per questa API key.");
-                return 0;
+            $chunk = collect($data)->where('done', true)->pluck('id');
+            if ($chunk->diff($previousIds)->isEmpty()) {
+                Log::warning("Pagina {$page} duplicata — stop loop API.");
+                break;
             }
 
-            Log::info("Raccolti " . $doneIds->count() . " achievements completati (inizio calcolo punti).");
+            $doneIds = $doneIds->merge($chunk);
+            $previousIds = $chunk;
 
-            $total = 0;
-            foreach ($doneIds->chunk(50) as $chunk) {
-                Log::info("Richiesta dettagli achievements per " . count($chunk) . " ID...");
-                $details = self::safeRequest(
-                    'https://api.guildwars2.com/v2/achievements',
-                    null,
-                    ['ids' => $chunk->implode(',')],
-                    60
-                );
+            Cache::put($partialKey, $doneIds, 600);
 
-                if (!$details) {
-                    Log::warning("Errore o timeout nel batch da " . count($chunk) . " ID.");
-                    continue;
-                }
+            if ($count < $pageSize) { Log::info("Pagina {$page} incompleta — fine dataset."); break; }
+            $page++;
+        }
 
-                $total += collect($details)->sum(function ($a) {
-                    $tiers = $a['tiers'] ?? [];
-                    return collect($tiers)->sum('points');
-                });
+        if ($doneIds->isEmpty()) {
+            // Se è vuoto e c’è stato un errore (502), **non cachare 0** e segnala indisponibilità
+            if ($hadError) {
+                throw new \RuntimeException("GW2 API temporaneamente non disponibile. Riprova più tardi.");
+            }
+            Log::info("Nessun achievement completato trovato.");
+            Cache::put($cacheKey, 0, 600); // opzionale: puoi anche evitare
+            return 0;
+        }
 
-                // === controllo soglia 2500 AP ===
-                if ($total > 2500) {
-                    Log::warning("Interruzione: API key {$apiKey} ha superato il limite di 2500 Achievement Points.");
-                    throw new \RuntimeException("L'account supera il limite di 2500 Achievement Points.");
-                }
+        Log::info("Raccolti ".$doneIds->count()." achievements completati (inizio calcolo punti).");
+
+        $total = 0;
+        foreach ($doneIds->chunk(50) as $chunk) {
+            Log::info("Richiesta dettagli achievements per ".count($chunk)." ID...");
+            $details = self::safeRequest(
+                'https://api.guildwars2.com/v2/achievements',
+                null,
+                ['ids' => $chunk->implode(',')],
+                60
+            );
+            if (!$details) {
+                $hadError = true; // segna errore su batch dettagli
+                Log::warning("Errore/timeout batch da ".count($chunk)." ID.");
+                continue;
             }
 
-            Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
+            $total += collect($details)->sum(function ($a) {
+                return collect($a['tiers'] ?? [])->sum('points');
+            });
 
-            // Cancella cache parziale (completato)
+            // blocco >2500 AP (chiave non anonimizzata)
+            if ($total > 2500) {
+                Log::warning("Interruzione: API key {$apiKey} ha superato il limite di 2500 AP.");
+                throw new \RuntimeException("L'account associato alla chiave specificata supera il limite di 2500 AP.");
+            }
+        }
+
+        Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
+
+        // Cache finale SOLO se non abbiamo avuto errori critici
+        if (!$hadError) {
             Cache::forget($partialKey);
+            Cache::put($cacheKey, (int)$total, 600);
+        }
 
-            return (int) $total;
-        });
+        return (int) $total;
     }
+
 
     /**
      * Restituisce la lista dei personaggi dell’account.
