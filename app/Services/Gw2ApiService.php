@@ -14,7 +14,7 @@ class Gw2ApiService
     /**
      * Effettua una chiamata sicura alle API GW2 
      */
-    private static function safeRequest(string $url, string $apiKey = null, array $params = [])
+    private static function safeRequest(string $url, string $apiKey = null, array $params = [], int $timeout = 30)
     {
         static $lastRequestTime = 0;
 
@@ -26,7 +26,7 @@ class Gw2ApiService
         $lastRequestTime = microtime(true);
 
         try {
-            $response = Http::withOptions(['timeout' => 60])
+            $response = Http::withOptions(['timeout' => $timeout])
                 ->retry(2, 2000)
                 ->when($apiKey, fn($req) => $req->withToken($apiKey))
                 ->get($url, $params);
@@ -124,12 +124,13 @@ class Gw2ApiService
             }
 
             $total = 0;
-            foreach ($doneIds->chunk(200) as $chunk) {
+            foreach ($doneIds->chunk(100) as $chunk) {
                 Log::info("Richiesta dettagli achievements per " . count($chunk) . " ID...");
                 $details = self::safeRequest(
                     'https://api.guildwars2.com/v2/achievements',
                     null,
-                    ['ids' => $chunk->implode(',')]
+                    ['ids' => $chunk->implode(',')],
+                    60
                 );
 
                 if (!$details) continue;
