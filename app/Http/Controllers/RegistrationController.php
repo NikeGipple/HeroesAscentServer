@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use App\Models\Account;
+use Illuminate\Support\Facades\Log;
 
 class RegistrationController extends Controller
 {
