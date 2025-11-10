@@ -24,7 +24,7 @@ class RegistrationController extends Controller
         $accountName = $request->input('account_name');
 
         // Recupera i punti stimati
-        $achievementPoints = Gw2ApiService::getAccountAchievementPoints($apiKey);
+        $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
 
         // Logghiamo solo i punti (senza bloccare)
         Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
