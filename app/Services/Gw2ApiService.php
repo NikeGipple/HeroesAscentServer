@@ -88,39 +88,68 @@ class Gw2ApiService
             $pageSize = 200;
 
             $start = microtime(true);
+            $previousIds = collect();
+
             Log::info("Inizio calcolo Achievement Points per API key {$apiKey}");
 
             while (true) {
+                // Interruzione dopo 90s totali
                 if (microtime(true) - $start > 90) {
-                    Log::warning("Interruzione automatica: superato limite 20s per /account/achievements");
+                    Log::warning("Stop automatico: superato limite 90s totali per /account/achievements");
+                    break;
+                }
+
+                // Stop di sicurezza: massimo 20 pagine (≈4000 achievements)
+                if ($page >= 20) {
+                    Log::warning("Stop automatico: raggiunto limite massimo di 20 pagine");
                     break;
                 }
 
                 Log::info("Richiesta pagina {$page} di /account/achievements...");
+                $startPage = microtime(true);
+
                 $data = self::safeRequest(
                     'https://api.guildwars2.com/v2/account/achievements',
                     $apiKey,
-                    ['page' => $page, 'page_size' => $pageSize]
+                    ['page' => $page, 'page_size' => $pageSize],
+                    60
                 );
 
+                $elapsedPage = round(microtime(true) - $startPage, 2);
                 $count = $data ? count($data) : 0;
-                Log::info("Pagina {$page} completata ({$count} record).");
+                Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
 
-                if (!$data || $count === 0) break;
+                // Se la pagina è vuota o errore
+                if (!$data || $count === 0) {
+                    Log::warning("Pagina {$page} vuota o non valida — fine dataset.");
+                    break;
+                }
 
+                // Estrai achievements completati
                 $chunk = collect($data)->where('done', true)->pluck('id');
-                if ($chunk->isEmpty()) break;
+
+                // Se pagina identica alla precedente → probabile loop infinito
+                if ($chunk->diff($previousIds)->isEmpty()) {
+                    Log::warning("Pagina {$page} duplicata (stessi achievement della precedente) — stop loop.");
+                    break;
+                }
 
                 $doneIds = $doneIds->merge($chunk);
+                $previousIds = $chunk;
 
-                if ($count < $pageSize) break;
+                // Se la pagina contiene meno del page_size → ultima pagina
+                if ($count < $pageSize) {
+                    Log::info("Pagina {$page} incompleta ({$count}/{$pageSize}) — fine dataset.");
+                    break;
+                }
+
                 $page++;
             }
 
-            if ($doneIds->isEmpty()) {
-                Log::info("Nessun achievement completato trovato per questa API key.");
-                return 0;
+            if ($doneIds->isNotEmpty()) {
+                Log::info("Raccolti " . $doneIds->count() . " achievement completati (parziale o completo).");
             }
+
 
             $total = 0;
             foreach ($doneIds->chunk(100) as $chunk) {
