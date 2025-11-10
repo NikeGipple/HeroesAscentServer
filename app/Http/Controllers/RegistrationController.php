@@ -8,6 +8,9 @@ use Illuminate\Support\Str;
 use App\Models\Account;
 use Illuminate\Support\Facades\Log;
 
+use App\Services\Gw2ApiService;
+
+
 class RegistrationController extends Controller
 {
     public function register(Request $request)
@@ -20,7 +23,11 @@ class RegistrationController extends Controller
         $apiKey = $request->input('api_key');
         $accountName = $request->input('account_name');
 
-        
+        // Recupera i punti stimati
+        $achievementPoints = Gw2ApiService::getAccountAchievementPoints($apiKey);
+
+        // Logghiamo solo i punti (senza bloccare)
+        Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
 
         if (empty($apiKey)) {
             return response()->json([
