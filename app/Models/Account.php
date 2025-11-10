@@ -13,6 +13,7 @@ class Account extends Model
     protected $fillable = [
         'api_key',
         'account_token',
+        'account_name',
         'active',
     ];
 
