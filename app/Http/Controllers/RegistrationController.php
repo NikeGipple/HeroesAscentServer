@@ -202,11 +202,10 @@ class RegistrationController extends Controller
 
         if ($match) {
             // ✅ Successo: account loggato correttamente
-            \Log::info("✅ Account validated successfully", [
+            \Log::info("✅ Account {$accountName} has connected to the server", [
                 'ip' => $request->ip(),
-                'account_name' => $accountName,
                 'account_id' => $account->id,
-                'message' => 'Account has just logged in — waiting for character selection event.'
+                'message' => 'Connection established — waiting for character selection.'
             ]);
         } else {
             // ⚠️ Fallimento: tentativo di accesso non autorizzato
