@@ -161,8 +161,14 @@ class RegistrationController extends Controller
         $token = $request->input('account_token');
         $accountName = $request->input('account_name');
 
+        \Log::info("=== Incoming /api/check request ===", [
+            'ip' => $request->ip(),
+            'account_name' => $accountName,
+            'token' => $token,
+        ]);
+
         if (empty($token) || empty($accountName)) {
-            \Log::warning('Check failed: missing fields', [
+            \Log::warning("❌ Check failed: missing fields", [
                 'ip' => $request->ip(),
                 'token_present' => !empty($token),
                 'account_name_present' => !empty($accountName),
@@ -179,7 +185,7 @@ class RegistrationController extends Controller
         $account = Account::where('account_token', $token)->first();
 
         if (!$account) {
-            \Log::warning('Check failed: token not found in database', [
+            \Log::warning("❌ Check failed: token not found in database", [
                 'ip' => $request->ip(),
                 'account_name' => $accountName,
             ]);
@@ -195,15 +201,16 @@ class RegistrationController extends Controller
         $match = strcasecmp($account->account_name, $accountName) === 0;
 
         if ($match) {
-            // Successo: account loggato correttamente
-            \Log::info('Account validated successfully', [
+            // ✅ Successo: account loggato correttamente
+            \Log::info("✅ Account validated successfully", [
                 'ip' => $request->ip(),
                 'account_name' => $accountName,
+                'account_id' => $account->id,
                 'message' => 'Account has just logged in — waiting for character selection event.'
             ]);
         } else {
-            // Fallimento: tentativo di accesso all’API di un altro account
-            \Log::warning('Token mismatch — potential unauthorized access attempt', [
+            // ⚠️ Fallimento: tentativo di accesso non autorizzato
+            \Log::warning("⚠️ Token mismatch — potential unauthorized access attempt", [
                 'ip' => $request->ip(),
                 'account_request' => $accountName,
                 'account_real' => $account->account_name,
@@ -211,11 +218,19 @@ class RegistrationController extends Controller
             ]);
         }
 
+        // ℹ️ Log finale di riepilogo
+        \Log::info($match ? "✅ Check completed: token valid" : "❌ Check completed: token invalid", [
+            'account_name' => $accountName,
+            'result' => $match,
+            'ip' => $request->ip(),
+        ]);
+
         return response()->json([
             'status' => 'ok',
             'result' => $match,
         ], 200);
     }
+
 
 
 }
