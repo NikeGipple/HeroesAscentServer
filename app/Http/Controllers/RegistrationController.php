@@ -154,8 +154,6 @@ class RegistrationController extends Controller
         ], 200);
     }
 
-
-
     public function check(Request $request)
     {
         $token = $request->input('account_token');

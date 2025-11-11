@@ -9,14 +9,27 @@ Route::get('/status', function () {
     return response()->json(['status' => 'ok']); 
 });
 
-// Registration using GW2 API key
-Route::post('/register', [RegistrationController::class, 'register']);
+// === Account routes ===
+Route::group([
+    'prefix' => 'account'
+], function () {
 
-Route::post('/check', [RegistrationController::class, 'check']);
+    Route::post('/register', [RegistrationController::class, 'register'])
+        ->name('account-register');
 
-// Auth using contest token
-Route::post('/auth', [RegistrationController::class, 'authenticate']);
+    Route::post('/check', [RegistrationController::class, 'check'])
+        ->name('account-check');
+});
 
-// Character lifecycle
-Route::post('/character/register', [CharacterController::class, 'register']);
-Route::post('/character/update', [CharacterController::class, 'update']);
+
+// === Character lifecycle routes ===
+Route::group([
+    'prefix' => 'character'
+], function () {
+
+    Route::post('/register', [CharacterController::class, 'register'])
+        ->name('character-register');
+
+    Route::post('/update', [CharacterController::class, 'update'])
+        ->name('character-update');
+});
