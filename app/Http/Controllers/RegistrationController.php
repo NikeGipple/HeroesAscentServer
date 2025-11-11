@@ -21,6 +21,9 @@ class RegistrationController extends Controller
         $accountName = $request->input('account_name');
 
         if (empty($apiKey)) {
+            Log::warning("❌ Registration failed: missing API key", [
+                'ip' => $request->ip(),
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'missing_key',
@@ -28,43 +31,54 @@ class RegistrationController extends Controller
         }
 
         if (empty($accountName)) {
+            Log::warning("❌ Registration failed: missing account name", [
+                'ip' => $request->ip(),
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'missing_account_name',
             ], 400);
         }
 
-        // ✅ 1. Verifica validità API key tramite Gw2ApiService
+        // ✅ 1. Verifica validità API key
         try {
             $tokenInfo = Gw2ApiService::getTokenInfo($apiKey);
 
             if (!$tokenInfo) {
+                Log::warning("❌ Registration failed: invalid GW2 API key", [
+                    'ip' => $request->ip(),
+                    'account_name' => $accountName,
+                ]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'gw2_invalid_api_key',
                 ], 503);
             }
 
-            // Controllo permessi (la chiave deve avere almeno "account" e "progression")
             if (!in_array('account', $tokenInfo['permissions']) || !in_array('progression', $tokenInfo['permissions'])) {
+                Log::warning("❌ Registration failed: invalid API key permissions", [
+                    'account_name' => $accountName,
+                    'permissions'  => $tokenInfo['permissions'] ?? [],
+                ]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'invalid_permissions',
                 ], 401);
             }
         } catch (\Throwable $e) {
-            Log::warning("GW2 API error (tokeninfo): " . $e->getMessage());
+            Log::error("⚠️ GW2 API error (tokeninfo): " . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => 'gw2_api_down',
             ], 503);
         }
 
-        // ✅ 2. Verifica che l’account dichiarato corrisponda a quello ufficiale di ArenaNet
+        // ✅ 2. Verifica nome account
         try {
             $accountData = Gw2ApiService::getAccount($apiKey);
 
             if (!$accountData || empty($accountData['name'])) {
+                Log::error("⚠️ GW2 API unavailable during account name verification");
                 return response()->json([
                     'status'  => 'error',
                     'message' => 'gw2_api_unavailable',
@@ -72,60 +86,65 @@ class RegistrationController extends Controller
             }
 
             if (strcasecmp($accountData['name'], $accountName) !== 0) {
-                Log::warning("Account name mismatch: API={$accountData['name']} vs Provided={$accountName}");
+                Log::warning("❌ Account mismatch", [
+                    'expected' => $accountData['name'],
+                    'provided' => $accountName,
+                ]);
                 return response()->json([
                     'status'  => 'error',
                     'message' => 'account_mismatch',
                 ], 403);
             }
 
-            Log::info("Verifica nome account riuscita per {$accountData['name']}");
+            Log::info("✅ Account name verified successfully: {$accountData['name']}");
         } catch (\Throwable $e) {
-            Log::error("GW2 API error (account verification): " . $e->getMessage());
+            Log::error("⚠️ GW2 API error (account verification): " . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
                 'message' => 'gw2_api_error'
             ], 503);
         }
 
-
-        // ✅ 3. Recupera e controlla i punti Achievement
-        Log::info("DEBUG — chiamata a Gw2ApiService avviata");
-
+        // ✅ 3. Controlla Achievement Points
         try {
             $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
-            Log::info("Account '{$accountName}' ha stimato {$achievementPoints} achievement points.");
+            Log::info("🏅 Account '{$accountName}' has {$achievementPoints} achievement points.");
         } catch (\RuntimeException $e) {
-            Log::warning("Registrazione interrotta per API key {$apiKey}: {$e->getMessage()}");
-
+            Log::warning("❌ Registration stopped — too many AP ({$e->getMessage()})", [
+                'account_name' => $accountName,
+            ]);
             return response()->json([
                 'status'  => 'error',
-                'message'    => 'too_many_ap',
+                'message' => 'too_many_ap',
             ], 403);
         }
 
-        // ✅ 4. Se l'account esiste già, restituisci il token esistente
+        // ✅ 4. Controlla se esiste già
         $account = Account::where('api_key', $apiKey)
             ->orWhere('account_name', $accountName)
             ->first();
 
         if ($account) {
+            Log::info("ℹ️ Account '{$accountName}' already registered. Returning existing token.");
             return response()->json([
                 'status' => 'ok',
-                'message'   => 'already_registered',
+                'message' => 'already_registered',
                 'account_token' => $account->account_token,
             ], 200);
         }
 
-        // ✅ Crea nuovo token univoco
+        // ✅ 5. Crea nuovo account
         $accountToken = Str::uuid()->toString();
-
-        // ✅ Salva nuovo account
         $account = Account::create([
             'api_key'       => $apiKey,
             'account_token' => $accountToken,
             'account_name'  => $accountName,
             'active'        => true,
+        ]);
+
+        Log::info("✅ Registration successful for '{$accountName}'", [
+            'account_id' => $account->id,
+            'token' => $accountToken,
         ]);
 
         return response()->json([
@@ -134,6 +153,7 @@ class RegistrationController extends Controller
             'account_token' => $accountToken,
         ], 200);
     }
+
 
 
     public function check(Request $request)
