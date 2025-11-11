@@ -41,7 +41,7 @@ class RegistrationController extends Controller
             if (!$tokenInfo) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'gw2_api_unavailable',
+                    'message' => 'gw2_invalid_api_key',
                 ], 503);
             }
 
