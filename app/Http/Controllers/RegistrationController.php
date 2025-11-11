@@ -23,7 +23,14 @@ class RegistrationController extends Controller
         if (empty($apiKey)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Missing API key'
+                'message' => 'missing_key',
+            ], 400);
+        }
+
+        if (empty($accountName)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'missing_account_name',
             ], 400);
         }
 
@@ -34,7 +41,7 @@ class RegistrationController extends Controller
             if (!$tokenInfo) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Servizi Guild Wars 2 non disponibili. Riprova più tardi.'
+                    'message' => 'gw2_api_unavailable',
                 ], 503);
             }
 
@@ -42,14 +49,14 @@ class RegistrationController extends Controller
             if (!in_array('account', $tokenInfo['permissions']) || !in_array('progression', $tokenInfo['permissions'])) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'API key non valida: mancano i permessi necessari (account, progression).'
+                    'message' => 'invalid_permissions',
                 ], 401);
             }
         } catch (\Throwable $e) {
             Log::warning("GW2 API error (tokeninfo): " . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Servizi Guild Wars 2 temporaneamente non disponibili.'
+                'message' => 'gw2_api_down',
             ], 503);
         }
 
@@ -60,7 +67,7 @@ class RegistrationController extends Controller
             if (!$accountData || empty($accountData['name'])) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Impossibile verificare il nome account tramite API ufficiale.'
+                    'message' => 'gw2_api_unavailable',
                 ], 503);
             }
 
@@ -68,7 +75,7 @@ class RegistrationController extends Controller
                 Log::warning("Account name mismatch: API={$accountData['name']} vs Provided={$accountName}");
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Il nome account fornito non corrisponde al proprietario della API key.'
+                    'message' => 'account_mismatch',
                 ], 403);
             }
 
@@ -77,7 +84,7 @@ class RegistrationController extends Controller
             Log::error("GW2 API error (account verification): " . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Errore durante la verifica del nome account. Riprova più tardi.'
+                'message' => 'gw2_api_error'
             ], 503);
         }
 
@@ -93,7 +100,7 @@ class RegistrationController extends Controller
 
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Account non idoneo: supera i 2500 Achievement Points consentiti.'
+                'message'    => 'too_many_ap',
             ], 403);
         }
 
@@ -105,9 +112,9 @@ class RegistrationController extends Controller
         if ($account) {
             return response()->json([
                 'status' => 'ok',
-                'message' => 'already_registered',
+                'message'   => 'already_registered',
                 'account_token' => $account->account_token,
-            ]);
+            ], 200);
         }
 
         // ✅ Crea nuovo token univoco
@@ -125,6 +132,6 @@ class RegistrationController extends Controller
             'status'        => 'ok',
             'message'       => 'registered',
             'account_token' => $accountToken,
-        ]);
+        ], 200);
     }
 }
