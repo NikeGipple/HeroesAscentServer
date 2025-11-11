@@ -18,7 +18,7 @@ class CharacterController extends Controller
             'payload' => $request->all(),
         ]);
 
-        // validazione base
+        // 1. Validazione base
         $data = $request->validate([
             'token'       => 'required|string',
             'name'        => 'required|string',
@@ -39,24 +39,27 @@ class CharacterController extends Controller
             'position.z'  => 'sometimes|numeric',
         ]);
 
-        // Account
+        // 2. Account lookup
         $account = Account::where('account_token', $data['token'])->first();
         if (!$account) {
-            Log::warning("Account not found for token: {$data['token']}");
+            Log::warning("❌ Account not found for provided token", [
+                'ip' => $request->ip(),
+                'token' => substr($data['token'], 0, 12) . '...',
+            ]);
             return response()->json(['status' => 'error', 'message' => 'Account not registered'], 404);
         }
 
-        // Normalizza event code
+        // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
-        // Verifica esistenza EventType in DB
+        // 3. Verifica tipo evento
         $eventType = EventType::where('code', $eventCode)->first();
         if (!$eventType) {
-            Log::warning("Unknown event type received: {$eventCode}", ['payload' => $data]);
+            Log::warning("⚠️ Unknown event type received: {$eventCode}", ['payload' => $data]);
             return response()->json(['status' => 'error', 'message' => "Unknown event type: {$eventCode}"], 400);
         }
 
-        // Recupera o crea character
+        // 🧩 4. Recupera o crea il personaggio
         $character = Character::firstOrCreate(
             ['name' => $data['name']],
             [
@@ -67,25 +70,24 @@ class CharacterController extends Controller
             ]
         );
 
-        // Se il character è già squalificato, blocchiamo ulteriori eventi (opzionale)
+        // 5. Controllo squalifica
         if ($character->isDisqualified()) {
-            Log::warning("Event rejected for disqualified character", ['name' => $character->name, 'event' => $eventCode]);
+            Log::warning("❌ Event rejected — character is disqualified", [
+                'character' => $character->name,
+                'event'     => $eventCode,
+            ]);
             return response()->json(['status' => 'error', 'message' => 'Character is disqualified'], 403);
         }
 
-        // Bit di stato (RTAPI.h)
-        $CS_IS_ALIVE  = 1 << 0; // 1
-        $CS_IS_DOWNED = 1 << 1; // 2
-
+        // Bit di stato
+        $CS_IS_ALIVE  = 1 << 0;
+        $CS_IS_DOWNED = 1 << 1;
         $state = (int) $data['state'];
-
-        // CONTROLLI DI COERENZA PER TIPO EVENTO
         $errors = [];
 
-        // controlli specifici
+        // 6. Controlli specifici di coerenza per tipo evento
         switch ($eventCode) {
             case 'LOGIN':
-                // richiediamo esplicitamente is_login=true se presente, ma non lo consideriamo obbligatorio assoluto
                 if (array_key_exists('is_login', $data) && !$request->boolean('is_login')) {
                     $errors[] = 'Payload says event=LOGIN but is_login flag is false';
                 }
@@ -116,23 +118,26 @@ class CharacterController extends Controller
                 break;
 
             case 'MAP_CHANGED':
-                // richiediamo map_type e map_id (map_id è già required nella validazione)
                 if (!array_key_exists('map_type', $data)) {
                     $errors[] = 'Missing map_type for MAP_CHANGED';
                 }
                 break;
-
-            default:
-                // per altri tipi, nessun controllo specifico di default
-                break;
         }
 
         if (!empty($errors)) {
-            Log::warning("Payload failed integrity checks", ['name' => $character->name, 'event' => $eventCode, 'errors' => $errors, 'payload' => $data]);
-            return response()->json(['status' => 'error', 'message' => 'Payload failed integrity checks', 'errors' => $errors], 400);
+            Log::warning("⚠️ Payload failed integrity checks", [
+                'character' => $character->name,
+                'event'     => $eventCode,
+                'errors'    => $errors,
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Payload failed integrity checks',
+                'errors' => $errors,
+            ], 400);
         }
 
-        // Costruisci contesto da salvare (rinforzato)
+        // 🗺️ 7. Costruisci contesto da salvare
         $context = [
             'map_id'      => (int)$data['map_id'],
             'map_type'    => $data['map_type'] ?? null,
@@ -151,15 +156,37 @@ class CharacterController extends Controller
             'details'     => $data['details'] ?? ("Client event: {$eventCode}"),
         ];
 
-        // registra l'evento (modello gestisce points e squalifica)
+        // 8. Registra l'evento
         $event = CharacterEvent::record($character, $eventCode, $context);
 
-        Log::info("Event recorded for {$character->name}", [
+        Log::info("✅ Event recorded for {$character->name}", [
             'event'       => $event->event_code,
             'points'      => $event->points,
             'is_critical' => $event->eventType->is_critical ?? false,
+            'account_id'  => $account->id,
         ]);
 
+        // 🔔 9. Log extra per eventi importanti
+        if ($eventCode === 'LOGIN') {
+            Log::info("🔑 Character {$character->name} logged in successfully", [
+                'account_name' => $account->account_name,
+                'map_id' => $data['map_id'],
+            ]);
+        } elseif ($eventCode === 'DEAD') {
+            Log::warning("💀 Character {$character->name} has died", [
+                'map_id' => $data['map_id'],
+            ]);
+        } elseif ($eventCode === 'RESPAWN') {
+            Log::info("ℹ️ Character {$character->name} has respawned", [
+                'map_id' => $data['map_id'],
+            ]);
+        } elseif ($eventCode === 'MAP_CHANGED') {
+            Log::info("ℹ️ Character {$character->name} changed map", [
+                'new_map_id' => $data['map_id'],
+            ]);
+        }
+
+        // ✅ 10. Risposta finale
         return response()->json([
             'status'  => 'ok',
             'event'   => [
@@ -170,4 +197,5 @@ class CharacterController extends Controller
             ],
         ]);
     }
+
 }

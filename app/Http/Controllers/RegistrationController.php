@@ -202,7 +202,7 @@ class RegistrationController extends Controller
 
         if ($match) {
             // ✅ Successo: account loggato correttamente
-            \Log::info("✅ Account {$accountName} has connected to the server", [
+            \Log::info("🔑 Account {$accountName} has connected to the server", [
                 'ip' => $request->ip(),
                 'account_id' => $account->id,
                 'message' => 'Connection established — waiting for character selection.'
