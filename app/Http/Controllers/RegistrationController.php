@@ -134,4 +134,68 @@ class RegistrationController extends Controller
             'account_token' => $accountToken,
         ], 200);
     }
+
+
+    public function check(Request $request)
+    {
+        $token = $request->input('account_token');
+        $accountName = $request->input('account_name');
+
+        if (empty($token) || empty($accountName)) {
+            \Log::warning('Check failed: missing fields', [
+                'ip' => $request->ip(),
+                'token_present' => !empty($token),
+                'account_name_present' => !empty($accountName),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'missing_fields',
+                'result' => false,
+            ], 400);
+        }
+
+        // ✅ Cerca l’account corrispondente
+        $account = Account::where('account_token', $token)->first();
+
+        if (!$account) {
+            \Log::warning('Check failed: token not found in database', [
+                'ip' => $request->ip(),
+                'account_name' => $accountName,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'account_not_found',
+                'result' => false,
+            ], 404);
+        }
+
+        // ✅ Confronta il nome account
+        $match = strcasecmp($account->account_name, $accountName) === 0;
+
+        if ($match) {
+            // Successo: account loggato correttamente
+            \Log::info('Account validated successfully', [
+                'ip' => $request->ip(),
+                'account_name' => $accountName,
+                'message' => 'Account has just logged in — waiting for character selection event.'
+            ]);
+        } else {
+            // Fallimento: tentativo di accesso all’API di un altro account
+            \Log::warning('Token mismatch — potential unauthorized access attempt', [
+                'ip' => $request->ip(),
+                'account_request' => $accountName,
+                'account_real' => $account->account_name,
+                'message' => 'The account from this request tried to access another account’s API.'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            'result' => $match,
+        ], 200);
+    }
+
+
 }

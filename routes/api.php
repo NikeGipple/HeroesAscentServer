@@ -12,6 +12,8 @@ Route::get('/status', function () {
 // Registration using GW2 API key
 Route::post('/register', [RegistrationController::class, 'register']);
 
+Route::post('/check', [RegistrationController::class, 'check']);
+
 // Auth using contest token
 Route::post('/auth', [RegistrationController::class, 'authenticate']);
 
