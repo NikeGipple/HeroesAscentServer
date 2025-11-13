@@ -69,6 +69,15 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => true,
                 'color' => 'secondary',
             ],
+            [
+                'code' => 'HEALING_USED',
+                'name' => 'Uso Skill di Cura',
+                'description' => 'Il personaggio ha usato l abilità di cura (skill 6), vietata dal regolamento',
+                'category' => 'violation',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
 
             // === VIOLAZIONI REGOLAMENTO ===
             [

@@ -122,6 +122,8 @@ class CharacterController extends Controller
                     $errors[] = 'Missing map_type for MAP_CHANGED';
                 }
                 break;
+            case 'HEALING_USED':
+                break;
         }
 
         if (!empty($errors)) {
