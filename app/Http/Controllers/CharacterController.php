@@ -189,9 +189,21 @@ class CharacterController extends Controller
         $character->refresh();
 
         if ($character->isDisqualified()) {
+
+            $lastViolation = $character
+                ->events()
+                ->whereHas('eventType', fn($q) => $q->where('is_critical', true))
+                ->latest('detected_at')
+                ->first();
+
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Character is disqualified'
+                'message' => 'Character is disqualified',
+                'last_violation' => $lastViolation ? [
+                    'code'        => $lastViolation->event_code,
+                    'title'       => $lastViolation->eventType->name,
+                    'description' => $lastViolation->eventType->description,
+                ] : null
             ], 403);
         }
 
