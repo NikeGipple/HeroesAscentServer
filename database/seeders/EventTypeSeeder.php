@@ -61,6 +61,15 @@ class EventTypeSeeder extends Seeder
                 'color' => 'primary',
             ],
             [
+                'code' => 'MAP_CHANGED_INVALID',
+                'name' => 'Cambio mappa su mappa non consentita',
+                'description' => 'Il personaggio è entrato in una mappa non permessa dal regolamento',
+                'category' => 'movement',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+            [
                 'code' => 'MOUNT_CHANGED',
                 'name' => 'Cambio mount',
                 'description' => 'Il personaggio ha usato una mount',

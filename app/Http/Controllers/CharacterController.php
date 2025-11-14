@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Character;
 use App\Models\CharacterEvent;
 use App\Models\EventType;
+use App\Models\ForbiddenMap;
 
 class CharacterController extends Controller
 {
@@ -52,6 +53,26 @@ class CharacterController extends Controller
         // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
+        
+        // === CONTROLLO MAPPE VIETATE ===
+        if ($eventCode === 'MAP_CHANGED') {
+
+            $forbidden = ForbiddenMap::where('map_id', (int)$data['map_id'])->first();
+
+            if ($forbidden) {
+
+                Log::warning("⛔ Mappa Vietata Rilevata!", [
+                    'character' => $data['name'],
+                    'map_id'    => $data['map_id'],
+                    'map_name'  => $forbidden->name,
+                    'type'      => $forbidden->type,
+                ]);
+
+                // Sovrascrivi l'evento
+                $eventCode = 'MAP_CHANGED_INVALID';
+            }
+        }
+
         // 3. Verifica tipo evento
         $eventType = EventType::where('code', $eventCode)->first();
         if (!$eventType) {
@@ -59,7 +80,7 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => "Unknown event type: {$eventCode}"], 400);
         }
 
-        // 🧩 4. Recupera o crea il personaggio
+        // 4. Recupera o crea il personaggio
         $character = Character::firstOrCreate(
             ['name' => $data['name']],
             [
@@ -120,6 +141,11 @@ class CharacterController extends Controller
             case 'MAP_CHANGED':
                 if (!array_key_exists('map_type', $data)) {
                     $errors[] = 'Missing map_type for MAP_CHANGED';
+                }
+                break;
+            case 'MAP_CHANGED_INVALID':
+                if (!array_key_exists('map_type', $data)) {
+                    $errors[] = 'Missing map_type for MAP_CHANGED_INVALID';
                 }
                 break;
             case 'HEALING_USED':
@@ -185,6 +211,10 @@ class CharacterController extends Controller
         } elseif ($eventCode === 'MAP_CHANGED') {
             Log::info("ℹ️ Character {$character->name} changed map", [
                 'new_map_id' => $data['map_id'],
+            ]);
+        } elseif ($eventCode === 'MAP_CHANGED_INVALID') {
+            Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
+                'map_id' => $data['map_id'],
             ]);
         }
 
