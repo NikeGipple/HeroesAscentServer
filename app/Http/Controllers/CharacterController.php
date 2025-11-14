@@ -12,6 +12,37 @@ use App\Models\ForbiddenMap;
 
 class CharacterController extends Controller
 {
+    /**
+     * Costruisce la risposta standard quando il personaggio è squalificato.
+     */
+    private function buildDisqualifiedResponse(Character $character)
+    {
+        $lastViolation = $character
+            ->events()
+            ->whereHas('eventType', fn($q) => $q->where('is_critical', true))
+            ->latest('detected_at')
+            ->first();
+
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Character is disqualified',
+            'last_violation' => $lastViolation ? [
+                'code'        => $lastViolation->event_code,
+                'title'       => $lastViolation->eventType->name,
+                'description' => $lastViolation->eventType->description,
+            ] : null,
+        ], 403);
+    }
+    
+    /**
+     * Riceve e valida un aggiornamento dal client, identifica il personaggio,
+     * applica i controlli sulle regole, registra l’evento e gestisce
+     * automaticamente la squalifica in caso di violazioni critiche.
+     *
+     * Restituisce:
+     * - status:ok per eventi validi
+     * - status:error con ultima violazione se il personaggio è squalificato
+     */
     public function update(Request $request)
     {
         Log::info("=== Incoming Character Update ===", [
@@ -91,14 +122,17 @@ class CharacterController extends Controller
             ]
         );
 
-        // 5. Controllo squalifica
+        // 5. Controllo squalifica PRIMA di registrare nuovi eventi
         if ($character->isDisqualified()) {
             Log::warning("❌ Event rejected — character is disqualified", [
                 'character' => $character->name,
                 'event'     => $eventCode,
             ]);
-            return response()->json(['status' => 'error', 'message' => 'Character is disqualified'], 403);
+
+            return $this->buildDisqualifiedResponse($character);
         }
+
+
 
         // Bit di stato
         $CS_IS_ALIVE  = 1 << 0;
@@ -188,23 +222,9 @@ class CharacterController extends Controller
         $event = CharacterEvent::record($character, $eventCode, $context);
         $character->refresh();
 
+        // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
         if ($character->isDisqualified()) {
-
-            $lastViolation = $character
-                ->events()
-                ->whereHas('eventType', fn($q) => $q->where('is_critical', true))
-                ->latest('detected_at')
-                ->first();
-
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Character is disqualified',
-                'last_violation' => $lastViolation ? [
-                    'code'        => $lastViolation->event_code,
-                    'title'       => $lastViolation->eventType->name,
-                    'description' => $lastViolation->eventType->description,
-                ] : null
-            ], 403);
+            return $this->buildDisqualifiedResponse($character);
         }
 
         Log::info("✅ Event recorded for {$character->name}", [
@@ -214,7 +234,7 @@ class CharacterController extends Controller
             'account_id'  => $account->id,
         ]);
 
-        // 🔔 9. Log extra per eventi importanti
+        // 9. Log per eventi 
         if ($eventCode === 'LOGIN') {
             Log::info("🔑 Character {$character->name} logged in successfully", [
                 'account_name' => $account->account_name,
