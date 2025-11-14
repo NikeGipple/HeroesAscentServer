@@ -186,6 +186,14 @@ class CharacterController extends Controller
 
         // 8. Registra l'evento
         $event = CharacterEvent::record($character, $eventCode, $context);
+        $character->refresh();
+
+        if ($character->isDisqualified()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Character is disqualified'
+            ], 403);
+        }
 
         Log::info("✅ Event recorded for {$character->name}", [
             'event'       => $event->event_code,
