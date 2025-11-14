@@ -28,8 +28,6 @@ class CharacterController extends Controller
             'message' => 'Character is disqualified',
             'last_violation' => $lastViolation ? [
                 'code'        => $lastViolation->event_code,
-                'title'       => $lastViolation->eventType->name,
-                'description' => $lastViolation->eventType->description,
             ] : null,
         ], 403);
     }
