@@ -31,6 +31,9 @@ class CharacterEvent extends Model
         'pos_x',
         'pos_y',
         'pos_z',
+        'mount_index',      
+        'level',            
+        'effective_level',
         'detected_at', 
     ];
 

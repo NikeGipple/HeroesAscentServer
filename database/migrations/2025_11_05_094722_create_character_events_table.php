@@ -26,6 +26,8 @@ return new class extends Migration
             $table->text('details')->nullable();
 
             // Dati di contesto
+            $table->unsignedTinyInteger('level')->nullable();
+            $table->unsignedTinyInteger('effective_level')->nullable();
             $table->unsignedInteger('map_id')->nullable()->index();
             $table->unsignedTinyInteger('map_type')->nullable();
             $table->unsignedTinyInteger('profession')->nullable();
@@ -36,6 +38,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('group_count')->nullable();
             $table->boolean('commander')->default(false);
             $table->boolean('is_login')->default(false);
+            $table->unsignedTinyInteger('mount_index')->nullable();
 
             // Posizione del personaggio
             $table->decimal('pos_x', 12, 6)->nullable();
