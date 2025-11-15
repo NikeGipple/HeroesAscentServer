@@ -23,6 +23,15 @@ class EventTypeSeeder extends Seeder
 
             // === STATO PERSONAGGIO ===
             [
+                'code' => 'LEVEL_UP',
+                'name' => 'Aumento di livello',
+                'description' => 'Il personaggio ha ottenuto un nuovo livello',
+                'category' => 'progression',
+                'points' => 0,
+                'is_critical' => false,
+                'color' => 'info',
+            ],
+            [
                 'code' => 'DOWNED',
                 'name' => 'Downed',
                 'description' => 'Il personaggio è stato atterrato (downed)',

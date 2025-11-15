@@ -50,23 +50,25 @@ class CharacterController extends Controller
 
         // 1. Validazione base
         $data = $request->validate([
-            'token'       => 'required|string',
-            'name'        => 'required|string',
-            'event'       => 'required|string',
-            'map_id'      => 'required|integer',
-            'state'       => 'required|integer',
-            'map_type'    => 'sometimes|integer',
-            'profession'  => 'sometimes|integer',
-            'elite_spec'  => 'sometimes|integer',
-            'race'        => 'sometimes|integer',
-            'group_type'  => 'sometimes|integer',
-            'group_count' => 'sometimes|integer',
-            'commander'   => 'sometimes|boolean',
-            'mount'       => 'sometimes|integer',
-            'is_login'    => 'sometimes|boolean',
-            'position.x'  => 'sometimes|numeric',
-            'position.y'  => 'sometimes|numeric',
-            'position.z'  => 'sometimes|numeric',
+            'token'             => 'required|string',
+            'name'              => 'required|string',
+            'event'             => 'required|string',
+            'map_id'            => 'required|integer',
+            'state'             => 'required|integer',
+            'map_type'          => 'sometimes|integer',
+            'profession'        => 'sometimes|integer',
+            'elite_spec'        => 'sometimes|integer',
+            'race'              => 'sometimes|integer',
+            'group_type'        => 'sometimes|integer',
+            'group_count'       => 'sometimes|integer',
+            'commander'         => 'sometimes|boolean',
+            'mount'             => 'sometimes|integer',
+            'is_login'          => 'sometimes|boolean',
+            'position.x'        => 'sometimes|numeric',
+            'position.y'        => 'sometimes|numeric',
+            'position.z'        => 'sometimes|numeric',
+            'level'             => 'sometimes|integer',
+            'effective_level'   => 'sometimes|integer',
         ]);
 
         // 2. Account lookup
@@ -180,6 +182,11 @@ class CharacterController extends Controller
                     $errors[] = 'Missing map_type for MAP_CHANGED_INVALID';
                 }
                 break;
+            case 'LEVEL_UP':
+                if (!array_key_exists('level', $data)) {
+                    $errors[] = 'Missing level for LEVEL_UP';
+                }
+                break;
             case 'HEALING_USED':
                 break;
         }
@@ -213,12 +220,20 @@ class CharacterController extends Controller
             'pos_y'       => $data['position']['y'] ?? null,
             'pos_z'       => $data['position']['z'] ?? null,
             'mount_index' => $data['mount'] ?? null,
+            'level'            => $data['level'] ?? null,
+            'effective_level'  => $data['effective_level'] ?? null,
             'details'     => $data['details'] ?? ("Client event: {$eventCode}"),
         ];
 
         // 8. Registra l'evento
         $event = CharacterEvent::record($character, $eventCode, $context);
         $character->refresh();
+
+        // === Aggiorna il livello del personaggio ===
+        if ($eventCode === 'LEVEL_UP' && array_key_exists('level', $data)) {
+            $character->level = (int)$data['level'];
+            $character->save();
+        }
 
         // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
         if ($character->isDisqualified()) {
@@ -238,6 +253,11 @@ class CharacterController extends Controller
                 'account_name' => $account->account_name,
                 'map_id' => $data['map_id'],
             ]);
+        } elseif ($eventCode === 'LEVEL_UP') {
+            Log::info("🎉 Level Up! {$character->name} è salito al livello {$data['level']}", [
+                'level'            => $data['level'] ?? null,
+                'map_id'           => $data['map_id'],
+            ]);
         } elseif ($eventCode === 'DEAD') {
             Log::warning("💀 Character {$character->name} has died", [
                 'map_id' => $data['map_id'],
@@ -254,7 +274,7 @@ class CharacterController extends Controller
             Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
                 'map_id' => $data['map_id'],
             ]);
-        }
+        } 
 
         // ✅ 10. Risposta finale
         return response()->json([
