@@ -117,10 +117,19 @@ class CharacterController extends Controller
             [
                 'account_id' => $account->id,
                 'profession' => $data['profession'] ?? null,
-                'level'      => 0,
+                'level'      => 1,
                 'score'      => 0,
             ]
         );
+
+        if ($eventCode === 'LOGIN' && isset($data['level']) && (int)$data['level'] === 1) {
+            if ($character->level !== 1) {
+                $character->level = 1;
+                $character->save();
+
+                Log::info("ℹ️ Livello iniziale aggiunto per {$character->name}");
+            }
+        }
 
         // 5. Controllo squalifica PRIMA di registrare nuovi eventi
         if ($character->isDisqualified()) {
@@ -230,10 +239,33 @@ class CharacterController extends Controller
         $character->refresh();
 
         // === Aggiorna il livello del personaggio ===
-        if ($eventCode === 'LEVEL_UP' && array_key_exists('level', $data)) {
-            $character->level = (int)$data['level'];
+        if ($eventCode === 'LEVEL_UP') {
+
+            $newLevel = (int)($data['level'] ?? 0);
+            $currentLevel = (int)$character->level;
+
+            // Richiesta sospetta: differenza > 1
+            if ($newLevel !== $currentLevel + 1) {
+
+                Log::warning("🚫 Level jump detected!", [
+                    'character'      => $character->name,
+                    'current_level'  => $currentLevel,
+                    'requested'      => $newLevel,
+                ]);
+
+                // Considerare penalità o squalifica
+                // Qui puoi fare return di evento critico o disqualify
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Invalid level progression',
+                ], 400);
+            }
+
+            // Ok → aggiorna livello nel DB
+            $character->level = $newLevel;
             $character->save();
         }
+
 
         // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
         if ($character->isDisqualified()) {
