@@ -83,9 +83,39 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Account not registered'], 404);
         }
 
+        
+
         // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
+        // 4. Recupera o crea il personaggio
+        $isNewCharacter = ($eventCode === 'LOGIN' && isset($data['level']) && (int)$data['level'] === 1);
+
+        if ($isNewCharacter) {
+
+            // Creiamo un nuovo personaggio
+            $character = Character::create([
+                'name'        => $data['name'],
+                'account_id'  => $account->id,
+                'profession'  => $data['profession'] ?? null,
+                'level'       => 1,
+                'score'       => 0,
+            ]);
+
+        } else {
+
+            // Recuperiamo il personaggio esistente
+            $character = Character::where('name', $data['name'])
+                ->latest('id')
+                ->first();
+
+                if (!$character) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Character not found',
+                    ], 404);
+                }
+        }
         
         // === CONTROLLO MAPPE VIETATE ===
         if ($eventCode === 'MAP_CHANGED') {
@@ -149,25 +179,7 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => "Unknown event type: {$eventCode}"], 400);
         }
 
-        // 4. Recupera o crea il personaggio
-        $character = Character::firstOrCreate(
-            ['name' => $data['name']],
-            [
-                'account_id' => $account->id,
-                'profession' => $data['profession'] ?? null,
-                'level'      => 1,
-                'score'      => 0,
-            ]
-        );
-
-        if ($eventCode === 'LOGIN' && isset($data['level']) && (int)$data['level'] === 1) {
-            if ($character->level !== 1) {
-                $character->level = 1;
-                $character->save();
-
-                Log::info("ℹ️ Livello iniziale aggiunto per {$character->name}");
-            }
-        }
+        
 
         // 5. Controllo squalifica PRIMA di registrare nuovi eventi
         if ($character->isDisqualified()) {
