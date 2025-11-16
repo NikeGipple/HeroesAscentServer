@@ -39,6 +39,8 @@ return new class extends Migration
             $table->boolean('commander')->default(false);
             $table->boolean('is_login')->default(false);
             $table->unsignedTinyInteger('mount_index')->nullable();
+            $table->unsignedInteger('buff_id')->nullable();
+            $table->string('buff_name')->nullable();
 
             // Posizione del personaggio
             $table->decimal('pos_x', 12, 6)->nullable();

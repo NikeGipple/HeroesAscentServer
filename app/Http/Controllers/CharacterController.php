@@ -69,6 +69,8 @@ class CharacterController extends Controller
             'position.z'        => 'sometimes|numeric',
             'level'             => 'sometimes|integer',
             'effective_level'   => 'sometimes|integer',
+            'buff_id'           => 'sometimes|integer',
+            'buff_name'         => 'sometimes|string',
         ]);
 
         // 2. Account lookup
@@ -103,6 +105,42 @@ class CharacterController extends Controller
                 $eventCode = 'MAP_CHANGED_INVALID';
             }
         }
+
+        // === BUFF PROIBITI (Cibo, Enhancement, Reinforced Armor) ===
+        if ($eventCode === 'BUFF_APPLIED') {
+
+            $buffId   = (int)($data['buff_id'] ?? 0);
+            $buffName = strtolower($data['buff_name'] ?? '');
+
+            // Nourishment (Cibo)
+            if ($buffName === 'nourishment') {
+                $eventCode = 'BUFF_FORBIDDEN_FOOD';
+            }
+
+            // Enhancement (Utility)
+            elseif ($buffName === 'enhancement') {
+                $eventCode = 'BUFF_FORBIDDEN_ENHANCEMENT';
+            }
+
+            // Reinforced Armor (ID 9283)
+            elseif ($buffId === 9283) {
+                $eventCode = 'BUFF_FORBIDDEN_REINFORCED';
+            }
+
+            // Se buff non riconosciuto: rifiutiamo
+            else {
+                Log::warning("⚠️ BUFF_APPLIED ricevuto ma non riconosciuto", [
+                    'buff_id' => $buffId,
+                    'buff_name' => $buffName,
+                ]);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unknown BUFF_APPLIED payload',
+                ], 400);
+            }
+        }
+
 
         // 3. Verifica tipo evento
         $eventType = EventType::where('code', $eventCode)->first();
@@ -198,6 +236,14 @@ class CharacterController extends Controller
                 break;
             case 'HEALING_USED':
                 break;
+            case 'BUFF_APPLIED':
+                if (!array_key_exists('buff_id', $data)) {
+                    $errors[] = 'Missing buff_id for BUFF_APPLIED';
+                }
+                if (!array_key_exists('buff_name', $data)) {
+                    $errors[] = 'Missing buff_name for BUFF_APPLIED';
+                }
+                break;
         }
 
         if (!empty($errors)) {
@@ -232,6 +278,8 @@ class CharacterController extends Controller
             'level'            => $data['level'] ?? null,
             'effective_level'  => $data['effective_level'] ?? null,
             'details'     => $data['details'] ?? ("Client event: {$eventCode}"),
+            'buff_id'   => $data['buff_id'] ?? null,
+            'buff_name' => $data['buff_name'] ?? null,
         ];
 
         // 8. Registra l'evento
@@ -306,7 +354,15 @@ class CharacterController extends Controller
             Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
                 'map_id' => $data['map_id'],
             ]);
-        } 
+        } elseif ($eventCode === 'BUFF_FORBIDDEN_FOOD') {
+            Log::warning("🍗❌ CIBO vietato per {$character->name}");
+        }
+        elseif ($eventCode === 'BUFF_FORBIDDEN_ENHANCEMENT') {
+            Log::warning("⚡❌ ENHANCEMENT vietato per {$character->name}");
+        }
+        elseif ($eventCode === 'BUFF_FORBIDDEN_REINFORCED') {
+            Log::warning("🛡️❌ REINFORCED ARMOR rilevato per {$character->name}");
+        }
 
         // ✅ 10. Risposta finale
         return response()->json([

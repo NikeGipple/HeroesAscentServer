@@ -99,14 +99,35 @@ class EventTypeSeeder extends Seeder
 
             // === VIOLAZIONI REGOLAMENTO ===
             [
-                'code' => 'RULE_FOOD_001',
-                'name' => 'Uso di Cibo',
-                'description' => 'Ha consumato cibo o booster durante la prova',
+                'code' => 'BUFF_FORBIDDEN_FOOD',
+                'name' => 'Cibo Non Consentito',
+                'description' => 'Uso di Cibo (Nourishment), vietato dal regolamento',
                 'category' => 'violation',
-                'points' => -100,
+                'points' => -99999,
                 'is_critical' => true,
                 'color' => 'danger',
             ],
+
+            [
+                'code' => 'BUFF_FORBIDDEN_ENHANCEMENT',
+                'name' => 'Enhancement non consentito',
+                'description' => 'Uso di Enhancement, vietato dal regolamento',
+                'category' => 'violation',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+
+            [
+                'code' => 'BUFF_FORBIDDEN_REINFORCED',
+                'name' => 'Reinforced Armor',
+                'description' => 'Uso di Reinforced Armor, vietato dal regolamento',
+                'category' => 'violation',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+
             [
                 'code' => 'DISQUALIFIED',
                 'name' => 'Squalifica',

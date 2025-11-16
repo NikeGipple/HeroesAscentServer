@@ -34,6 +34,8 @@ class CharacterEvent extends Model
         'mount_index',      
         'level',            
         'effective_level',
+        'buff_id',
+        'buff_name', 
         'detected_at', 
     ];
 
