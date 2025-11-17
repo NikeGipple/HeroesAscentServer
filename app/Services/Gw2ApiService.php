@@ -219,4 +219,72 @@ class Gw2ApiService
         }
         return $data;
     }
+
+    /**
+     * Ritorna solo la build attiva del personaggio (specializations + traits).
+     */
+    public static function getActiveBuild(string $apiKey, string $characterName): ?array
+    {
+        $name = rawurlencode($characterName);
+
+        $data = self::safeRequest(
+            "https://api.guildwars2.com/v2/characters/{$name}/buildtabs",
+            $apiKey,
+            ['tabs' => 'all'],
+            60
+        );
+
+        if (!$data || !isset($data['active']) || !isset($data['builds'])) {
+            return null;
+        }
+
+        return $data['builds'][$data['active']] ?? null;
+    }
+
+
+
+    /**
+     * Ritorna la lista dei trait ID della build attiva del personaggio.
+     */
+    public static function getActiveTraits(string $apiKey, string $characterName): array
+    {
+        $build = self::getActiveBuild($apiKey, $characterName);
+
+        if (!$build || !isset($build['specializations'])) {
+            return [];
+        }
+
+        return collect($build['specializations'])
+            ->pluck('traits')   // array di [a,b,c] oppure null
+            ->flatten()
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Ritorna la lista delle skill attive nella build attiva del personaggio.
+     */
+    public static function getActiveSkills(string $apiKey, string $characterName): array
+    {
+        $build = self::getActiveBuild($apiKey, $characterName);
+
+        if (!$build || !isset($build['skills'])) {
+            return [];
+        }
+
+        $skills = $build['skills'];
+
+        return collect([
+            $skills['heal'] ?? null,
+            $skills['elite'] ?? null,
+            ...($skills['utilities'] ?? [])
+        ])
+        ->filter()   
+        ->values()
+        ->all();
+    }
+
+
+
 }
