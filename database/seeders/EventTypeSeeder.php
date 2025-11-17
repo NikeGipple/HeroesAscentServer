@@ -129,6 +129,26 @@ class EventTypeSeeder extends Seeder
             ],
 
             [
+                'code' => 'BUILD_FORBIDDEN_TRAIT',
+                'name' => 'Trait vietato in build',
+                'description' => 'La build attiva contiene uno o più trait vietati dal regolamento',
+                'category' => 'violation',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+            
+            [
+                'code' => 'BUILD_FORBIDDEN_SKILL',
+                'name' => 'Skill vietata in build',
+                'description' => 'La build attiva contiene una o più skill vietate dal regolamento',
+                'category' => 'violation',
+                'points' => -99999,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+
+            [
                 'code' => 'DISQUALIFIED',
                 'name' => 'Squalifica',
                 'description' => 'Violazione grave: personaggio squalificato',

@@ -22,7 +22,6 @@ return new class extends Migration
             $table->string('event_code', 100)->index();
 
             // Titolo e descrizione
-            $table->string('title')->nullable();
             $table->text('details')->nullable();
 
             // Dati di contesto

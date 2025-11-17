@@ -16,7 +16,6 @@ class CharacterEvent extends Model
     protected $fillable = [
         'character_id',
         'event_code',
-        'title',
         'details',
         'map_id',
         'map_type',

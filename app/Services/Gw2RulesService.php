@@ -6,6 +6,8 @@ use App\Models\Character;
 use App\Models\BannedSkill;
 use App\Models\BannedTrait;
 use App\Services\Gw2ApiService;
+use App\Models\CharacterEvent;
+
 use Illuminate\Support\Facades\Log;
 
 class Gw2RulesService
@@ -52,9 +54,11 @@ class Gw2RulesService
 
     public static function scanAllActiveCharacters(bool $verbose = false): void
     {
-        // Helper interno per output console
-        $out = function($msg) use ($verbose) {
-            if ($verbose) echo $msg . PHP_EOL;
+        // Helper interno per output console (solo per comando artisan)
+        $out = function ($msg) use ($verbose) {
+            if ($verbose) {
+                echo $msg . PHP_EOL;
+            }
         };
 
         $out("🟦 [SCAN] Avvio scansione personaggi attivi...");
@@ -69,35 +73,67 @@ class Gw2RulesService
             return;
         }
 
-        $processed = 0;
-        $disqualified = 0;
+        $processed     = 0;
+        $disqualified  = 0;
 
         foreach ($characters as $char) {
-
             $out("➡️ [SCAN] Controllo {$char->name}");
 
             $violations = self::scanCharacter($char);
 
-            if (empty($violations['traits']) && empty($violations['skills'])) {
+            $hasTraitViolations = !empty($violations['traits']);
+            $hasSkillViolations = !empty($violations['skills']);
+
+            // Nessuna violazione
+            if (!$hasTraitViolations && !$hasSkillViolations) {
                 $out("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
                 $char->update(['last_check_at' => now()]);
                 $processed++;
                 continue;
             }
 
-            // Solo questo va nei log reali
-            Log::warning("Personaggio {$char->name} SQUALIFICATO. Violazioni:", $violations);
+            // Registra eventi per ogni TRAIT vietato
+            foreach ($violations['traits'] as $traitId) {
 
-            $out("🚨 [SCAN] SQUALIFICATO {$char->name}");
-            $out("🚨 Violazioni: " . json_encode($violations));
+                $traitName = BannedTrait::where('gw2_id', $traitId)->value('name') ?? 'Trait Sconosciuto';
 
+                CharacterEvent::record($char, 'BUILD_FORBIDDEN_TRAIT', [
+                    'details'    => "Trait vietato: {$traitName} (ID: {$traitId})",
+                    'buff_id'    => $traitId,
+                    'buff_name'  => $traitName,
+                ]);
+
+                $out("⚠️ [SCAN] Trait vietato per {$char->name} → {$traitName} (ID {$traitId})");
+            }
+
+            // Registra eventi per ogni SKILL vietata
+            foreach ($violations['skills'] as $skillId) {
+
+                $skillName = BannedSkill::where('gw2_id', $skillId)->value('name') ?? 'Skill Sconosciuta';
+
+                CharacterEvent::record($char, 'BUILD_FORBIDDEN_SKILL', [
+                    'details'    => "Skill vietata: {$skillName} (ID: {$skillId})",
+                    'buff_id'    => $skillId,
+                    'buff_name'  => $skillName,
+                ]);
+
+                $out("⚠️ [SCAN] Skill vietata per {$char->name} → {$skillName} (ID {$skillId})");
+            }
+
+
+            // Aggiorna sempre last_check_at
             $char->update([
-                'disqualified_at' => now(),
-                'last_check_at'   => now(),
+                'last_check_at' => now(),
             ]);
 
+            // Se almeno un evento critico è stato creato, il personaggio ora è squalificato
+            if ($char->fresh()->isDisqualified()) {
+                $disqualified++;
+                Log::warning("Personaggio {$char->name} SQUALIFICATO per build non valida.", $violations);
+                $out("🚨 [SCAN] SQUALIFICATO {$char->name} per build non valida");
+            }
+
             $processed++;
-            $disqualified++;
         }
 
         $out("🟦 [SCAN] Scansione completata.");
@@ -105,6 +141,7 @@ class Gw2RulesService
         $out("🟦 Squalificati: {$disqualified}");
         $out("🟩 Fine.");
     }
+
 
 
 }
