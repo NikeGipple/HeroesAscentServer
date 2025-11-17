@@ -55,31 +55,70 @@ class Gw2RulesService
      */
     public static function scanAllActiveCharacters(): void
     {
+        Log::info("🟦 [SCAN] Avvio scansione personaggi attivi...");
+
+        // Recupero tutti i personaggi non squalificati
         $characters = Character::whereNull('disqualified_at')->get();
+        $count = $characters->count();
+
+        Log::info("🟦 [SCAN] Trovati {$count} personaggi da controllare.");
+
+        if ($count === 0) {
+            Log::info("🟩 [SCAN] Nessun personaggio da controllare. Fine scansione.");
+            return;
+        }
+
+        $processed = 0;
+        $disqualified = 0;
 
         foreach ($characters as $char) {
 
-            $violations = self::scanCharacter($char);
+            Log::info("➡️ [SCAN] Controllo personaggio: {$char->name} (ID {$char->id})");
 
-            // Nessuna violazione → aggiorno solo last_check_at
-            if (empty($violations['traits']) && empty($violations['skills'])) {
-                $char->update(['last_check_at' => now()]);
+            try {
+                $violations = self::scanCharacter($char);
+            } catch (\Throwable $e) {
+                Log::error("❌ [SCAN] Errore durante il controllo del personaggio {$char->name}: " . $e->getMessage());
                 continue;
             }
 
-            // 🚨 Violazioni: squalifica
+            $hasTraitViolations = !empty($violations['traits']);
+            $hasSkillViolations = !empty($violations['skills']);
+
+            if (!$hasTraitViolations && !$hasSkillViolations) {
+
+                Log::info("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
+
+                $char->update(['last_check_at' => now()]);
+                $processed++;
+                continue;
+            }
+
+            // Violazioni trovate → squalifica
+            $disqualified++;
+            $processed++;
+
+            Log::warning("🚨 [SCAN] VIOLAZIONI — Personaggio {$char->name} SQUALIFICATO");
+            Log::warning("🚨 [SCAN] Violazioni dettagliate:", $violations);
+
             $char->update([
                 'disqualified_at' => now(),
                 'last_check_at'   => now(),
             ]);
 
-            Log::warning("Personaggio {$char->name} SQUALIFICATO. Violazioni:", $violations);
-
-            // 🔥 Se vuoi registrare gli eventi in CharacterEvent:
-            // $char->events()->create([
-            //     'type' => 'DISQUALIFIED',
-            //     'payload' => json_encode($violations),
-            // ]);
+            // Se vuoi loggare eventi nel DB, puoi riattivare questa parte:
+            /*
+            $char->events()->create([
+                'type' => 'DISQUALIFIED',
+                'payload' => json_encode($violations),
+            ]);
+            */
         }
+
+        Log::info("🟦 [SCAN] Scansione completata.");
+        Log::info("🟦 [SCAN] Personaggi controllati: {$processed}");
+        Log::info("🟦 [SCAN] Personaggi squalificati: {$disqualified}");
+        Log::info("🟩 [SCAN] Fine.");
     }
+
 }
