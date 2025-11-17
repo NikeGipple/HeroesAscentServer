@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Services\Gw2ApiService;
 
 /**
  * Servizio per interfacciarsi con le API pubbliche di Guild Wars 2.
@@ -14,7 +15,7 @@ class Gw2ApiService
     /**
      * Esegue una richiesta sicura con gestione di rate-limit, retry e timeout.
      */
-    private static function safeRequest(string $url, string $apiKey = null, array $params = [], int $timeout = 30)
+    public static function safeRequest(string $url, string $apiKey = null, array $params = [], int $timeout = 30)
     {
         static $lastRequestTime = 0;
 

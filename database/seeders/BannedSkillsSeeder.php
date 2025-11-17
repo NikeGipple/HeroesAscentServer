@@ -18,7 +18,17 @@ class BannedSkillsSeeder extends Seeder
 
         foreach ($banned as $gw2Id) {
 
-            $data = Http::get("https://api.guildwars2.com/v2/skills/{$gw2Id}?lang=en")->json();
+            $data = Gw2ApiService::safeRequest(
+                "https://api.guildwars2.com/v2/skills/{$gw2Id}",
+                null,
+                ['lang' => 'en'],
+                30
+            );
+
+            if (!$data) {
+                echo "❌ Skill $gw2Id non caricata (API error)\n";
+                continue;
+            }
 
             DB::table('banned_skills')->updateOrInsert(
                 ['gw2_id' => $gw2Id],

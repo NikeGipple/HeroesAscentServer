@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use App\Services\Gw2ApiService;
 
 class BannedTraitsSeeder extends Seeder
 {
@@ -18,7 +19,17 @@ class BannedTraitsSeeder extends Seeder
 
         foreach ($banned as $gw2Id) {
 
-            $data = Http::get("https://api.guildwars2.com/v2/traits/{$gw2Id}?lang=en")->json();
+            $data = Gw2ApiService::safeRequest(
+                "https://api.guildwars2.com/v2/traits/{$gw2Id}",
+                null,
+                ['lang' => 'en'],
+                30
+            );
+
+            if (!$data) {
+                echo "❌ Trait $gw2Id non caricato (API error)\n";
+                continue;
+            }
 
             DB::table('banned_traits')->updateOrInsert(
                 ['gw2_id' => $gw2Id],
