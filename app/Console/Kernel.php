@@ -4,10 +4,18 @@ namespace App\Console;
 
 use App\Services\Gw2RulesService;
 use Illuminate\Console\Scheduling\Schedule;
+use App\Console\Commands\ScanCharactersCommand;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+    /**
+     * Comandi personalizzati dell'applicazione.
+     */
+    protected $commands = [
+        ScanCharactersCommand::class,
+    ];
+
     /**
      * Define the application's command schedule.
      */
