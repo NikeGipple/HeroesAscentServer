@@ -50,21 +50,22 @@ class Gw2RulesService
     }
 
 
-    /**
-     * Controlla TUTTI i personaggi attivi (non squalificati)
-     */
-    public static function scanAllActiveCharacters(): void
+    public static function scanAllActiveCharacters(bool $verbose = false): void
     {
-        Log::info("🟦 [SCAN] Avvio scansione personaggi attivi...");
+        // Helper interno per output console
+        $out = function($msg) use ($verbose) {
+            if ($verbose) echo $msg . PHP_EOL;
+        };
 
-        // Recupero tutti i personaggi non squalificati
+        $out("🟦 [SCAN] Avvio scansione personaggi attivi...");
+
         $characters = Character::whereNull('disqualified_at')->get();
         $count = $characters->count();
 
-        Log::info("🟦 [SCAN] Trovati {$count} personaggi da controllare.");
+        $out("🟦 [SCAN] Trovati {$count} personaggi da controllare.");
 
         if ($count === 0) {
-            Log::info("🟩 [SCAN] Nessun personaggio da controllare. Fine scansione.");
+            $out("🟩 [SCAN] Nessun personaggio da controllare. Fine.");
             return;
         }
 
@@ -73,52 +74,37 @@ class Gw2RulesService
 
         foreach ($characters as $char) {
 
-            Log::info("➡️ [SCAN] Controllo personaggio: {$char->name} (ID {$char->id})");
+            $out("➡️ [SCAN] Controllo {$char->name}");
 
-            try {
-                $violations = self::scanCharacter($char);
-            } catch (\Throwable $e) {
-                Log::error("❌ [SCAN] Errore durante il controllo del personaggio {$char->name}: " . $e->getMessage());
-                continue;
-            }
+            $violations = self::scanCharacter($char);
 
-            $hasTraitViolations = !empty($violations['traits']);
-            $hasSkillViolations = !empty($violations['skills']);
-
-            if (!$hasTraitViolations && !$hasSkillViolations) {
-
-                Log::info("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
-
+            if (empty($violations['traits']) && empty($violations['skills'])) {
+                $out("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
                 $char->update(['last_check_at' => now()]);
                 $processed++;
                 continue;
             }
 
-            // Violazioni trovate → squalifica
-            $disqualified++;
-            $processed++;
+            // Solo questo va nei log reali
+            Log::warning("Personaggio {$char->name} SQUALIFICATO. Violazioni:", $violations);
 
-            Log::warning("🚨 [SCAN] VIOLAZIONI — Personaggio {$char->name} SQUALIFICATO");
-            Log::warning("🚨 [SCAN] Violazioni dettagliate:", $violations);
+            $out("🚨 [SCAN] SQUALIFICATO {$char->name}");
+            $out("🚨 Violazioni: " . json_encode($violations));
 
             $char->update([
                 'disqualified_at' => now(),
                 'last_check_at'   => now(),
             ]);
 
-            // Se vuoi loggare eventi nel DB, puoi riattivare questa parte:
-            /*
-            $char->events()->create([
-                'type' => 'DISQUALIFIED',
-                'payload' => json_encode($violations),
-            ]);
-            */
+            $processed++;
+            $disqualified++;
         }
 
-        Log::info("🟦 [SCAN] Scansione completata.");
-        Log::info("🟦 [SCAN] Personaggi controllati: {$processed}");
-        Log::info("🟦 [SCAN] Personaggi squalificati: {$disqualified}");
-        Log::info("🟩 [SCAN] Fine.");
+        $out("🟦 [SCAN] Scansione completata.");
+        $out("🟦 Controllati: {$processed}");
+        $out("🟦 Squalificati: {$disqualified}");
+        $out("🟩 Fine.");
     }
+
 
 }

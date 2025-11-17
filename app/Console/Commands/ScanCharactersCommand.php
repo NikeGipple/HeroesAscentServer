@@ -24,7 +24,7 @@ class ScanCharactersCommand extends Command
     {
         $this->info("Avvio verifica personaggi attivi...");
 
-        Gw2RulesService::scanAllActiveCharacters();
+        Gw2RulesService::scanAllActiveCharacters(true);
 
         $this->info("Verifica completata!");
 

@@ -22,7 +22,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->call(function () {
-            Gw2RulesService::scanAllActiveCharacters();
+            Gw2RulesService::scanAllActiveCharacters(false);
         })
         ->everyFiveMinutes()
         ->withoutOverlapping();
