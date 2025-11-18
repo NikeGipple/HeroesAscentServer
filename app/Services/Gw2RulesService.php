@@ -29,6 +29,9 @@ class Gw2RulesService
         // 2) Skills attive
         $skills = Gw2ApiService::getActiveSkills($apiKey, $name);
 
+        Log::info("{$name} → Traits attivi: " . implode(', ', $traits));
+        Log::info("{$name} → Skills attive: " . implode(', ', $skills));
+
         $violations = [
             'traits' => [],
             'skills' => [],
@@ -54,6 +57,8 @@ class Gw2RulesService
 
     public static function scanAllActiveCharacters(bool $verbose = false): void
     {
+        Log::warning("🟦 [SCAN] Inizio scansione automatica alle " . now());
+
         // Helper interno per output console (solo per comando artisan)
         $out = function ($msg) use ($verbose) {
             if ($verbose) {
@@ -70,6 +75,7 @@ class Gw2RulesService
 
         if ($count === 0) {
             $out("🟩 [SCAN] Nessun personaggio da controllare. Fine.");
+            Log::warning("🟩 [SCAN] Fine scansione automatica alle " . now());
             return;
         }
 
@@ -135,6 +141,8 @@ class Gw2RulesService
 
             $processed++;
         }
+
+        Log::warning("🟩 [SCAN] Fine scansione automatica alle " . now());
 
         $out("🟦 [SCAN] Scansione completata.");
         $out("🟦 Controllati: {$processed}");
