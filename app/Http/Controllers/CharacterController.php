@@ -304,8 +304,19 @@ class CharacterController extends Controller
             $newLevel = (int)($data['level'] ?? 0);
             $currentLevel = (int)$character->level;
 
-            // Richiesta sospetta: differenza > 1
-            if ($newLevel !== $currentLevel + 1) {
+            $allowed = false;
+
+            // Caso speciale: da 1 → 3 permesso
+            if ($currentLevel === 1 && $newLevel === 3) {
+                $allowed = true;
+            }
+
+            // Caso normale: +1 livello
+            if ($newLevel === $currentLevel + 1) {
+                $allowed = true;
+            }
+
+            if (!$allowed) {
 
                 Log::warning("🚫 Level jump detected!", [
                     'character'      => $character->name,
@@ -313,8 +324,6 @@ class CharacterController extends Controller
                     'requested'      => $newLevel,
                 ]);
 
-                // Considerare penalità o squalifica
-                // Qui puoi fare return di evento critico o disqualify
                 return response()->json([
                     'status'  => 'error',
                     'message' => 'Invalid level progression',
@@ -325,6 +334,7 @@ class CharacterController extends Controller
             $character->level = $newLevel;
             $character->save();
         }
+
 
 
         // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
