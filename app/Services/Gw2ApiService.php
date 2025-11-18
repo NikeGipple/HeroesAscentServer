@@ -235,12 +235,22 @@ class Gw2ApiService
             60
         );
 
-        if (!$data || !isset($data['active']) || !isset($data['builds'])) {
+        // L’API restituisce un ARRAY di TAB
+        if (!$data || !is_array($data)) {
             return null;
         }
 
-        return $data['builds'][$data['active']] ?? null;
+        // Cerca il tab attivo ("is_active": true)
+        foreach ($data as $tab) {
+            if (($tab['is_active'] ?? false) === true) {
+                return $tab['build'] ?? null;
+            }
+        }
+
+        // fallback: primo tab se nessun is_active
+        return $data[0]['build'] ?? null;
     }
+
 
 
 
