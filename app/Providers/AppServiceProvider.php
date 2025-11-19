@@ -20,12 +20,5 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // NECESSARIO in Laravel 11/12 per caricare lo scheduler del Kernel
-        $this->app->booted(function () {
-            $schedule = $this->app->make(Schedule::class);
-
-            // Carica le definizioni dello scheduler presenti nel Kernel
-            require base_path('routes/console.php');
-        });
     }
 }
