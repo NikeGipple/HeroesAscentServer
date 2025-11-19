@@ -21,12 +21,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->call(function () {
-            Gw2RulesService::scanAllActiveCharacters(false);
-        })
-        ->everyFiveMinutes()
-        ->withoutOverlapping();
+        $schedule->command('characters:scan')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
+
 
     /**
      * Register the commands for the application.
