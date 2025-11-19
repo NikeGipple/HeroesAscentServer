@@ -29,8 +29,8 @@ class Gw2RulesService
         // 2) Skills attive
         $skills = Gw2ApiService::getActiveSkills($apiKey, $name);
 
-        Log::info("{$name} → Traits attivi: " . implode(', ', $traits));
-        Log::info("{$name} → Skills attive: " . implode(', ', $skills));
+        // Log::info("{$name} → Traits attivi: " . implode(', ', $traits));
+        // Log::info("{$name} → Skills attive: " . implode(', ', $skills));
 
         $violations = [
             'traits' => [],
