@@ -1,8 +1,15 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Inspiring;
 
+// comando "inspire"
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// SCHEDULAZIONE DEL TUO CRON JOB
+Schedule::command('characters:scan')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
