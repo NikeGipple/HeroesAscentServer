@@ -83,8 +83,6 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Account not registered'], 404);
         }
 
-        
-
         // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
@@ -179,8 +177,6 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => "Unknown event type: {$eventCode}"], 400);
         }
 
-        
-
         // 5. Controllo squalifica PRIMA di registrare nuovi eventi
         if ($character->isDisqualified()) {
             Log::warning("❌ Event rejected — character is disqualified", [
@@ -248,6 +244,16 @@ class CharacterController extends Controller
                 break;
             case 'HEALING_USED':
                 break;
+            case 'GROUP':
+                $gt = (int)($data['group_type'] ?? 0);
+                $gc = (int)($data['group_count'] ?? 0);
+
+                if ($gt === 0 && $gc === 0) {
+                    $errors[] = 'Invalid GROUP event: both group_type and group_count are 0';
+                }
+                break;
+
+
             case 'BUFF_APPLIED':
                 if (!array_key_exists('buff_id', $data)) {
                     $errors[] = 'Missing buff_id for BUFF_APPLIED';
@@ -384,7 +390,14 @@ class CharacterController extends Controller
         }
         elseif ($eventCode === 'BUFF_FORBIDDEN_REINFORCED') {
             Log::warning("🛡️❌ REINFORCED ARMOR rilevato per {$character->name}");
+        } 
+        elseif ($eventCode === 'GROUP') {
+            Log::warning("🚫 Player {$character->name} is in a GROUP!", [
+                'group_type'  => $data['group_type'] ?? null,
+                'group_count' => $data['group_count'] ?? null,
+            ]);
         }
+
 
         // ✅ 10. Risposta finale
         return response()->json([
