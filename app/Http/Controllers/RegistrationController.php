@@ -99,16 +99,26 @@ class RegistrationController extends Controller
             Log::info("✅ Account name verified successfully: {$accountData['name']}");
 
             if (!empty($accountData['guilds'] ?? [])) {
-                Log::warning("❌ Registration blocked: '{$accountName}' appartiene a una gilda", [
-                    'ip'     => $request->ip(),
-                    'guilds' => $accountData['guilds'],
-                ]);
 
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'guild_membership_not_allowed',
-                ], 403);
+                // ID gilda permessa
+                $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53'; // Heroes Ascent Official Guild
+
+                if (count($accountData['guilds']) === 1 && $accountData['guilds'][0] === $allowedGuild) {
+                    // Procedi normalmente
+                } 
+                else {
+                    // Qualsiasi altra gilda, o più gilde → blocco
+                    Log::warning("❌ Registration blocked: '{$accountName}' appartiene a una o più gilde non permesse", [
+                        'ip' => $request->ip(),
+                    ]);
+
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'guild_membership_not_allowed',
+                    ], 403);
+                }
             }
+
 
         } catch (\Throwable $e) {
             Log::error("⚠️ GW2 API error (account verification): " . $e->getMessage());
