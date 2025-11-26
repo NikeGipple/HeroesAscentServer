@@ -192,6 +192,7 @@ class CharacterController extends Controller
         // Bit di stato
         $CS_IS_ALIVE  = 1 << 0;
         $CS_IS_DOWNED = 1 << 1;
+        $CS_IS_GLIDING = 1 << 5;
         $state = (int) $data['state'];
         $errors = [];
 
@@ -224,6 +225,11 @@ class CharacterController extends Controller
             case 'MOUNT_CHANGED':
                 if (!array_key_exists('mount', $data)) {
                     $errors[] = 'Missing mount index for MOUNT_CHANGED';
+                }
+                break;
+            case 'GLIDING':
+                if (($state & $CS_IS_GLIDING) === 0) {
+                    $errors[] = 'State bit does not indicate gliding while event is GLIDING';
                 }
                 break;
 
@@ -366,22 +372,41 @@ class CharacterController extends Controller
                 'level'            => $data['level'] ?? null,
                 'map_id'           => $data['map_id'],
             ]);
+        } elseif ($eventCode === 'DOWNED') {
+            Log::warning("🩸 Character {$character->name} is DOWNED", [
+                'map_id' => $data['map_id'],
+            ]);
         } elseif ($eventCode === 'DEAD') {
             Log::warning("💀 Character {$character->name} has died", [
                 'map_id' => $data['map_id'],
             ]);
-        } elseif ($eventCode === 'RESPAWN') {
-            Log::info("ℹ️ Character {$character->name} has respawned", [
-                'map_id' => $data['map_id'],
-            ]);
+        // } elseif ($eventCode === 'RESPAWN') {
+        //     Log::info("ℹ️ Character {$character->name} has respawned", [
+        //         'map_id' => $data['map_id'],
+        //     ]);
         } elseif ($eventCode === 'MAP_CHANGED') {
             Log::info("ℹ️ Character {$character->name} changed map", [
                 'new_map_id' => $data['map_id'],
-            ]);
+            ]);      
         } elseif ($eventCode === 'MAP_CHANGED_INVALID') {
             Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
                 'map_id' => $data['map_id'],
             ]);
+        } elseif ($eventCode === 'MOUNT_CHANGED') {
+            Log::warning("🐎❌ MOUNT usage detected for {$character->name}", [
+                'mount_index' => $data['mount'] ?? null,
+            ]);
+        } elseif ($eventCode === 'GLIDING') {
+            Log::warning("🌪️❌ GLIDING rilevato per {$character->name}");
+
+        } elseif ($eventCode === 'HEALING_USED') {
+            Log::warning("❤️‍🩹❌ HEALING SKILL used by {$character->name}");
+
+        } elseif ($eventCode === 'MAP_CHANGED_INVALID') {
+            Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
+                'map_id' => $data['map_id'],
+            ]);
+            
         } elseif ($eventCode === 'BUFF_FORBIDDEN_FOOD') {
             Log::warning("🍗❌ CIBO vietato per {$character->name}");
         }

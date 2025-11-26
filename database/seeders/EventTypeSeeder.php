@@ -88,6 +88,15 @@ class EventTypeSeeder extends Seeder
                 'color' => 'secondary',
             ],
             [
+                'code' => 'GLIDING',
+                'name' => 'Uso del Glider',
+                'description' => 'Il personaggio ha utilizzato il glider, azione vietata dal regolamento.',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+            [
                 'code' => 'HEALING_USED',
                 'name' => 'Uso Skill di Cura',
                 'description' => 'Il personaggio ha usato l abilità di cura (skill 6), vietata dal regolamento',
