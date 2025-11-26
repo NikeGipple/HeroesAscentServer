@@ -116,26 +116,36 @@ class Gw2RulesService
             $apiKey = $char->account->api_key;
             $guilds = self::scanAccountGuilds($apiKey);
 
+            $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53';
+
             if (!empty($guilds) && !isset($guilds['error'])) {
 
-                $firstGuild = $guilds[0];
+                // Se una delle gilde è quella ammessa → NON registriamo nulla e proseguiamo
+                if (in_array($allowedGuild, $guilds, true)) {
 
-                CharacterEvent::record($char, 'ACCOUNT_IN_GUILD', [
-                    'details'   => "Account appartenente alla gilda (ID: {$firstGuild})",
-                ]);
+                } else {
 
-                $out("🚨 [SCAN] {$char->name} appartiene a una gilda. SQUALIFICATO.");
-                Log::warning("Personaggio {$char->name} squalificato → appartiene a una gilda", [
-                    'guilds' => $guilds
-                ]);
+                    // Altrimenti → squalifica 
+                    $firstGuild = $guilds[0];
 
-                $char->update(['last_check_at' => now()]);
+                    CharacterEvent::record($char, 'ACCOUNT_IN_GUILD', [
+                        'details'   => "Account appartenente alla gilda (ID: {$firstGuild})",
+                    ]);
 
-                if ($char->fresh()->isDisqualified()) {
-                    $disqualified++;
-                    continue;
+                    $out("🚨 [SCAN] {$char->name} appartiene a una gilda NON permessa. Rimosso dalla competizione.");
+                    Log::warning("Personaggio {$char->name} escluso → appartiene a una gilda non ammessa", [
+                        'guilds' => $guilds
+                    ]);
+
+                    $char->update(['last_check_at' => now()]);
+
+                    if ($char->fresh()->isDisqualified()) {
+                        $disqualified++;
+                        continue;
+                    }
                 }
             }
+
 
             // CONTROLLO controllo trait + skill
             $violations = self::scanCharacter($char);
