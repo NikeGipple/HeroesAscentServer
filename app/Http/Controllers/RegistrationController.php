@@ -97,6 +97,19 @@ class RegistrationController extends Controller
             }
 
             Log::info("✅ Account name verified successfully: {$accountData['name']}");
+
+            if (!empty($accountData['guilds'] ?? [])) {
+                Log::warning("❌ Registration blocked: '{$accountName}' appartiene a una gilda", [
+                    'ip'     => $request->ip(),
+                    'guilds' => $accountData['guilds'],
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'guild_membership_not_allowed',
+                ], 403);
+            }
+
         } catch (\Throwable $e) {
             Log::error("⚠️ GW2 API error (account verification): " . $e->getMessage());
             return response()->json([
@@ -104,6 +117,8 @@ class RegistrationController extends Controller
                 'message' => 'gw2_api_error'
             ], 503);
         }
+
+
 
         // ✅ 3. Controlla Achievement Points
         try {
