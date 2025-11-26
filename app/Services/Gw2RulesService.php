@@ -121,9 +121,7 @@ class Gw2RulesService
                 $firstGuild = $guilds[0];
 
                 CharacterEvent::record($char, 'ACCOUNT_IN_GUILD', [
-                    'details'   => "Account appartenente a una gilda (ID: {$firstGuild})",
-                    'buff_id'   => $firstGuild,
-                    'buff_name' => 'Guild Membership',
+                    'details'   => "Account appartenente alla gilda (ID: {$firstGuild})",
                 ]);
 
                 $out("🚨 [SCAN] {$char->name} appartiene a una gilda. SQUALIFICATO.");
