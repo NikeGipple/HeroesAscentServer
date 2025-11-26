@@ -105,6 +105,15 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => true,
                 'color' => 'danger',
             ],
+            [
+                'code' => 'ACCOUNT_IN_GUILD',
+                'name' => 'Account in una gilda',
+                'description' => 'L’account appartiene a una o più gilde — vietato dal regolamento del concorso',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true, 
+                'color' => 'danger',
+            ],
 
             // === VIOLAZIONI REGOLAMENTO ===
             [

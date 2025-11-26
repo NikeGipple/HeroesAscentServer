@@ -12,6 +12,28 @@ use Illuminate\Support\Facades\Log;
 
 class Gw2RulesService
 {
+
+    /**
+     * Controlla SE l'account appartiene a una o piu gilde:
+     */
+    public static function scanAccountGuilds(string $apiKey): array
+    {
+        try {
+            $account = Gw2ApiService::getAccount($apiKey); // GET /v2/account
+
+            if (!isset($account['guilds']) || empty($account['guilds'])) {
+                return []; // OK → nessuna gilda
+            }
+
+            return $account['guilds']; // Lista ID gilde
+        } catch (\Exception $e) {
+            Log::error("Errore chiamando /v2/account per controllo gilde: " . $e->getMessage());
+            return ['error' => true];
+        }
+    }
+
+
+
     /**
      * Controlla UN personaggio:
      * - ritorna array con violazioni o array vuoto
@@ -55,6 +77,8 @@ class Gw2RulesService
     }
 
 
+
+
     public static function scanAllActiveCharacters(bool $verbose = false): void
     {
         Log::warning("🟦 [SCAN] Inizio scansione automatica alle " . now());
@@ -85,6 +109,33 @@ class Gw2RulesService
         foreach ($characters as $char) {
             $out("➡️ [SCAN] Controllo {$char->name}");
 
+            // CONTROLLO GILDE ACCOUNT
+            $guilds = self::scanAccountGuilds($apiKey);
+
+            if (!empty($guilds) && !isset($guilds['error'])) {
+
+                $firstGuild = $guilds[0];
+
+                CharacterEvent::record($char, 'ACCOUNT_IN_GUILD', [
+                    'details'   => "Account appartenente a una gilda (ID: {$firstGuild})",
+                    'buff_id'   => $firstGuild,
+                    'buff_name' => 'Guild Membership',
+                ]);
+
+                $out("🚨 [SCAN] {$char->name} appartiene a una gilda. SQUALIFICATO.");
+                Log::warning("Personaggio {$char->name} squalificato → appartiene a una gilda", [
+                    'guilds' => $guilds
+                ]);
+
+                $char->update(['last_check_at' => now()]);
+
+                if ($char->fresh()->isDisqualified()) {
+                    $disqualified++;
+                    continue;
+                }
+            }
+
+            // CONTROLLO controllo trait + skill
             $violations = self::scanCharacter($char);
 
             $hasTraitViolations = !empty($violations['traits']);
