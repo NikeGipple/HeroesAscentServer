@@ -174,6 +174,16 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => true,
                 'color' => 'danger',
             ],
+            
+            [
+                'code' => 'EQUIPMENT_INVALID',
+                'name' => 'Equipaggiamento non consentito',
+                'description' => 'Il personaggio ha equipaggiato uno o più oggetti non permessi dal regolamento (solo l’arma è consentita).',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
 
             [
                 'code' => 'DISQUALIFIED',

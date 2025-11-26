@@ -251,9 +251,6 @@ class Gw2ApiService
         return $data[0]['build'] ?? null;
     }
 
-
-
-
     /**
      * Ritorna la lista dei trait ID della build attiva del personaggio.
      */
@@ -294,6 +291,67 @@ class Gw2ApiService
         ->filter()   
         ->values()
         ->all();
+    }
+
+    /**
+     * Ritorna la lista degli equip tab del personaggio.
+     */
+    public static function getEquipmentTabs(string $apiKey, string $characterName): array
+    {
+        return self::requestAuthenticated(
+            "/v2/characters/" . urlencode($characterName) . "/equipmenttabs",
+            $apiKey
+        );
+    }
+
+    /**
+     * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
+     */
+    private static function getInvalidEquipment(Character $character): array
+    {
+        if ($character->level <= 3) {
+            return [];
+        }
+
+        $apiKey = $character->account->api_key;
+        $name   = $character->name;
+
+        try {
+            $tabs = Gw2ApiService::getEquipmentTabs($apiKey, $name);
+        } catch (\Exception $e) {
+            Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
+            return [];
+        }
+
+        if (!isset($tabs['tabs'])) {
+            return [];
+        }
+
+        $active = collect($tabs['tabs'])->firstWhere('is_active', true);
+
+        if (!$active || empty($active['equipment'])) {
+            return [];
+        }
+
+        $invalid = [];
+
+        foreach ($active['equipment'] as $item) {
+
+            $slot = $item['slot'];
+
+            // CONSENTITO: solo weapon*
+            if (str_starts_with($slot, 'Weapon')) {
+                continue;
+            }
+
+            // VIETATO: tutto il resto
+            $invalid[] = [
+                'slot' => $slot,
+                'id'   => $item['id'] ?? null,
+            ];
+        }
+
+        return $invalid;
     }
 
 

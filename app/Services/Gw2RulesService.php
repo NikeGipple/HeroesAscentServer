@@ -57,6 +57,7 @@ class Gw2RulesService
         $violations = [
             'traits' => [],
             'skills' => [],
+            'equipment'  => [],
         ];
 
         // 🔍 Controllo trait
@@ -72,6 +73,8 @@ class Gw2RulesService
                 $violations['skills'][] = $skillId;
             }
         }
+
+        $violations['equipment'] = self::getInvalidEquipment($character);
 
         return $violations;
     }
@@ -110,6 +113,7 @@ class Gw2RulesService
             $out("➡️ [SCAN] Controllo {$char->name}");
 
             // CONTROLLO GILDE ACCOUNT
+            $apiKey = $char->account->api_key;
             $guilds = self::scanAccountGuilds($apiKey);
 
             if (!empty($guilds) && !isset($guilds['error'])) {
@@ -150,32 +154,58 @@ class Gw2RulesService
             }
 
             // Registra eventi per ogni TRAIT vietato
-            foreach ($violations['traits'] as $traitId) {
+            if (!empty($violations['traits'])) {
 
-                $traitName = BannedTrait::where('gw2_id', $traitId)->value('name') ?? 'Trait Sconosciuto';
+                $firstTraitId = $violations['traits'][0];
+
+                $firstTraitName = BannedTrait::where('gw2_id', $firstTraitId)
+                    ->value('name') ?? 'Trait Sconosciuto';
 
                 CharacterEvent::record($char, 'BUILD_FORBIDDEN_TRAIT', [
-                    'details'    => "Trait vietato: {$traitName} (ID: {$traitId})",
-                    'buff_id'    => $traitId,
-                    'buff_name'  => $traitName,
+                    'details'    => "Trait vietato rilevato",
+                    'buff_id'    => $firstTraitId,          
+                    'buff_name'  => $firstTraitName,
                 ]);
 
-                $out("⚠️ [SCAN] Trait vietato per {$char->name} → {$traitName} (ID {$traitId})");
+                $out("⚠️ [SCAN] Trait vietati per {$char->name} → Primo trovato: {$firstTraitName} (ID {$firstTraitId})");
+                Log::warning("Trait vietati per {$char->name}. Primo: {$firstTraitName} (ID {$firstTraitId})");
             }
 
             // Registra eventi per ogni SKILL vietata
-            foreach ($violations['skills'] as $skillId) {
+            if (!empty($violations['skills'])) {
 
-                $skillName = BannedSkill::where('gw2_id', $skillId)->value('name') ?? 'Skill Sconosciuta';
+                $firstSkillId = $violations['skills'][0];
+
+                $firstSkillName = BannedSkill::where('gw2_id', $firstSkillId)
+                    ->value('name') ?? 'Skill Sconosciuta';
 
                 CharacterEvent::record($char, 'BUILD_FORBIDDEN_SKILL', [
-                    'details'    => "Skill vietata: {$skillName} (ID: {$skillId})",
-                    'buff_id'    => $skillId,
-                    'buff_name'  => $skillName,
+                    'details'    => "Skill vietata rilevata",
+                    'buff_id'    => $firstSkillId,          
+                    'buff_name'  => $firstSkillName,
                 ]);
 
-                $out("⚠️ [SCAN] Skill vietata per {$char->name} → {$skillName} (ID {$skillId})");
+                $out("⚠️ [SCAN] Skill vietate per {$char->name} → Prima trovata: {$firstSkillName} (ID {$firstSkillId})");
+                Log::warning("Skill vietate per {$char->name}. Prima: {$firstSkillName} (ID {$firstSkillId})");
             }
+
+
+            // === EQUIPAGGIAMENTO VIETATO ===
+            if (!empty($violations['equipment'])) {
+
+                // Prendiamo SOLO il primo pezzo non consentito
+                $first = $violations['equipment'][0];
+                $firstId = $first['id'] ?? null;
+
+                CharacterEvent::record($char, 'EQUIPMENT_INVALID', [
+                    'details'    => "Equipaggiamento non consentito",
+                    'buff_id'    => $firstId,     
+                    'buff_name'  => 'Forbidden Equipment',
+                ]);
+
+                Log::warning("Equip non valido per {$char->name}. Primo slot non valido: {$first['slot']} (ID {$firstId})");
+            }
+
 
 
             // Aggiorna sempre last_check_at
