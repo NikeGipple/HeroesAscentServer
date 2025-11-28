@@ -61,6 +61,16 @@ class Gw2ApiService
     }
 
     /**
+     * Wrapper per effettuare richieste autenticate alle API GW2.
+     */
+    public static function requestAuthenticated(string $endpoint, string $apiKey, array $params = [], int $timeout = 30)
+    {
+        $url = "https://api.guildwars2.com{$endpoint}";
+        return self::safeRequest($url, $apiKey, $params, $timeout);
+    }
+
+
+    /**
      * Ottiene le informazioni base dell’API key.
      */
     public static function getTokenInfo(string $apiKey): ?array
