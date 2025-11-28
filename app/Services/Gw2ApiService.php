@@ -86,128 +86,216 @@ class Gw2ApiService
     /**
      * Calcola il totale (stimato) degli Achievement Points.
      */
+    // public static function getAchievementPoints(string $apiKey): int
+    // {
+    //     $cacheKey   = "gw2_ap_total_{$apiKey}";
+    //     $partialKey = "gw2_ap_partial_{$apiKey}";
+
+    //     // Usa cache esistente se presente
+    //     $cached = Cache::get($cacheKey);
+    //     if ($cached !== null) {
+    //         return (int) $cached;
+    //     }
+
+    //     $doneIds   = Cache::get($partialKey, collect());
+    //     $page      = 0;
+    //     $pageSize  = 200;
+    //     $start     = microtime(true);
+    //     $hadError  = false;
+
+    //     Log::info("Inizio calcolo AP per API key {$apiKey} (parziale: ".$doneIds->count().")");
+
+    //     $previousIds = collect();
+
+    //     while (true) {
+    //         if (microtime(true) - $start > 300) {
+    //             Log::warning("Stop automatico: > 300 s");
+    //             break;
+    //         }
+    //         if ($page >= 25) {
+    //             Log::warning("Stop automatico: > 25 pagine");
+    //             break;
+    //         }
+
+    //         Log::info("Richiesta pagina {$page} di /account/achievements…");
+    //         $startPage = microtime(true);
+    //         $data = self::safeRequest(
+    //             'https://api.guildwars2.com/v2/account/achievements',
+    //             $apiKey,
+    //             ['page' => $page, 'page_size' => $pageSize],
+    //             60
+    //         );
+    //         $elapsedPage = round(microtime(true) - $startPage, 2);
+    //         $count = $data ? count($data) : 0;
+    //         Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
+
+    //         if (!$data) {
+    //             $hadError = true;
+    //             Log::warning("Pagina {$page} non valida (null) — stop dataset.");
+    //             break;
+    //         }
+    //         if ($count === 0) {
+    //             Log::warning("Pagina {$page} vuota — fine dataset.");
+    //             break;
+    //         }
+
+    //         $chunk = collect($data)->where('done', true)->pluck('id');
+
+    //         if ($chunk->diff($previousIds)->isEmpty()) {
+    //             Log::warning("Pagina {$page} duplicata — stop loop API.");
+    //             break;
+    //         }
+
+    //         $doneIds   = $doneIds->merge($chunk);
+    //         $previousIds = $chunk;
+
+    //         Cache::put($partialKey, $doneIds, 600);
+
+    //         if ($count < $pageSize) {
+    //             Log::info("Pagina {$page} incompleta — fine dataset.");
+    //             break;
+    //         }
+    //         $page++;
+    //     }
+
+    //     if ($doneIds->isEmpty()) {
+    //         if ($hadError) {
+    //             throw new \RuntimeException("GW2 API temporaneamente non disponibile. Riprova più tardi.");
+    //         }
+    //         Log::info("Nessun achievement completato trovato.");
+    //         Cache::put($cacheKey, 0, 600);
+    //         return 0;
+    //     }
+
+    //     Log::info("Raccolti ".$doneIds->count()." achievements completati (inizio calcolo punti).");
+
+    //     $total = 0;
+    //     foreach ($doneIds->chunk(50) as $chunk) {
+    //         Log::info("Richiesta dettagli achievements per ".count($chunk)." ID…");
+    //         $details = self::safeRequest(
+    //             'https://api.guildwars2.com/v2/achievements',
+    //             null,
+    //             ['ids' => $chunk->implode(',')],
+    //             60
+    //         );
+
+    //         if (!$details) {
+    //             $hadError = true;
+    //             Log::warning("Errore/timeout batch da ".count($chunk)." ID.");
+    //             continue;
+    //         }
+
+    //         $total += collect($details)->sum(function ($a) {
+    //             return collect($a['tiers'] ?? [])->sum('points');
+    //         });
+
+    //         // Blocco > 2500 AP
+    //         if ($total > 2500) {
+    //             Log::warning("Interruzione: API key {$apiKey} ha superato il limite di 2500 Achievement Points.");
+    //             throw new \RuntimeException(
+    //                 "L'account associato alla chiave specificata supera il limite di 2500 Achievement Points."
+    //             );
+    //         }
+    //     }
+
+    //     Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
+
+    //     // Cache finale solo se nessun errore
+    //     if (!$hadError) {
+    //         Cache::forget($partialKey);
+    //         Cache::put($cacheKey, (int)$total, 600);
+    //     }
+
+    //     return (int) $total;
+    // }
+
     public static function getAchievementPoints(string $apiKey): int
     {
-        $cacheKey   = "gw2_ap_total_{$apiKey}";
-        $partialKey = "gw2_ap_partial_{$apiKey}";
-
-        // Usa cache esistente se presente
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return (int) $cached;
+        $cacheKey = "gw2_ap_total_{$apiKey}";
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
         }
 
-        $doneIds   = Cache::get($partialKey, collect());
-        $page      = 0;
-        $pageSize  = 200;
-        $start     = microtime(true);
-        $hadError  = false;
+        Log::info("Calcolo AP accurato per API key {$apiKey}...");
 
-        Log::info("Inizio calcolo AP per API key {$apiKey} (parziale: ".$doneIds->count().")");
+        // 1. Otteniamo TUTTI gli achievements dell'account
+        $progress = self::safeRequest(
+            "https://api.guildwars2.com/v2/account/achievements",
+            $apiKey,
+            [],
+            60
+        );
 
-        $previousIds = collect();
-
-        while (true) {
-            if (microtime(true) - $start > 300) {
-                Log::warning("Stop automatico: > 300 s");
-                break;
-            }
-            if ($page >= 25) {
-                Log::warning("Stop automatico: > 25 pagine");
-                break;
-            }
-
-            Log::info("Richiesta pagina {$page} di /account/achievements…");
-            $startPage = microtime(true);
-            $data = self::safeRequest(
-                'https://api.guildwars2.com/v2/account/achievements',
-                $apiKey,
-                ['page' => $page, 'page_size' => $pageSize],
-                60
-            );
-            $elapsedPage = round(microtime(true) - $startPage, 2);
-            $count = $data ? count($data) : 0;
-            Log::info("Pagina {$page} completata in {$elapsedPage}s ({$count} record).");
-
-            if (!$data) {
-                $hadError = true;
-                Log::warning("Pagina {$page} non valida (null) — stop dataset.");
-                break;
-            }
-            if ($count === 0) {
-                Log::warning("Pagina {$page} vuota — fine dataset.");
-                break;
-            }
-
-            $chunk = collect($data)->where('done', true)->pluck('id');
-
-            if ($chunk->diff($previousIds)->isEmpty()) {
-                Log::warning("Pagina {$page} duplicata — stop loop API.");
-                break;
-            }
-
-            $doneIds   = $doneIds->merge($chunk);
-            $previousIds = $chunk;
-
-            Cache::put($partialKey, $doneIds, 600);
-
-            if ($count < $pageSize) {
-                Log::info("Pagina {$page} incompleta — fine dataset.");
-                break;
-            }
-            $page++;
+        if (!$progress) {
+            throw new \RuntimeException("Impossibile ottenere /account/achievements");
         }
 
-        if ($doneIds->isEmpty()) {
-            if ($hadError) {
-                throw new \RuntimeException("GW2 API temporaneamente non disponibile. Riprova più tardi.");
-            }
-            Log::info("Nessun achievement completato trovato.");
-            Cache::put($cacheKey, 0, 600);
-            return 0;
-        }
+        // Mappa rapida: achievement_id -> progress (done, current, etc)
+        $progressMap = collect($progress)->keyBy('id');
 
-        Log::info("Raccolti ".$doneIds->count()." achievements completati (inizio calcolo punti).");
+        // 2. Otteniamo i dettagli degli achievements ottenuti
+        $achievementIds = $progressMap->keys();
 
-        $total = 0;
-        foreach ($doneIds->chunk(50) as $chunk) {
-            Log::info("Richiesta dettagli achievements per ".count($chunk)." ID…");
-            $details = self::safeRequest(
-                'https://api.guildwars2.com/v2/achievements',
+        $details = [];
+        foreach ($achievementIds->chunk(200) as $chunk) {
+            $batch = self::safeRequest(
+                "https://api.guildwars2.com/v2/achievements",
                 null,
                 ['ids' => $chunk->implode(',')],
                 60
             );
+            if ($batch) {
+                $details = array_merge($details, $batch);
+            }
+        }
 
-            if (!$details) {
-                $hadError = true;
-                Log::warning("Errore/timeout batch da ".count($chunk)." ID.");
-                continue;
+        // 3. Calcolo preciso dei punti ottenuti
+        $total = 0;
+
+        foreach ($details as $achievement) {
+            $id = $achievement['id'];
+            $prog = $progressMap[$id] ?? null;
+            if (!$prog) continue;
+
+            $tiers = $achievement['tiers'] ?? [];
+            if (!$tiers) continue;
+
+            // Tier raggiunti? Metodo identico a gw2efficiency:
+            $pointsEarned = 0;
+
+            if (($prog['done'] ?? false) === true) {
+                // Achievement completato → somma i punti del tier più alto
+                $maxTier = collect($tiers)->max('points');
+                $pointsEarned = $maxTier;
+            } else {
+                // Achievement con progressione parziale → calcola il tier raggiunto
+                $current = $prog['current'] ?? 0;
+
+                foreach ($tiers as $tier) {
+                    if (isset($tier['count']) && $current >= $tier['count']) {
+                        $pointsEarned += $tier['points'];
+                    }
+                }
             }
 
-            $total += collect($details)->sum(function ($a) {
-                return collect($a['tiers'] ?? [])->sum('points');
-            });
+            $total += $pointsEarned;
 
-            // Blocco > 2500 AP
+            // Limite per la competizione
             if ($total > 2500) {
-                Log::warning("Interruzione: API key {$apiKey} ha superato il limite di 2500 Achievement Points.");
+                Log::warning("API key {$apiKey} supera limite 2500 AP → interruzione");
                 throw new \RuntimeException(
-                    "L'account associato alla chiave specificata supera il limite di 2500 Achievement Points."
+                    "L'account associato alla chiave supera il limite di 2500 Achievement Points."
                 );
             }
         }
 
-        Log::info("Achievement points stimati per API key {$apiKey}: {$total}");
+        Cache::put($cacheKey, $total, 600);
 
-        // Cache finale solo se nessun errore
-        if (!$hadError) {
-            Cache::forget($partialKey);
-            Cache::put($cacheKey, (int)$total, 600);
-        }
+        Log::info("Totale AP calcolato: {$total}");
 
-        return (int) $total;
+        return $total;
     }
+
 
     /**
      * Restituisce la lista dei personaggi dell’account.
