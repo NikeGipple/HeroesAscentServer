@@ -60,7 +60,7 @@ class Gw2ApiService
         }
     }
 
-    /**
+        /**
      * Wrapper per effettuare richieste autenticate alle API GW2.
      */
     public static function requestAuthenticated(string $endpoint, string $apiKey, array $params = [], int $timeout = 30)
@@ -69,7 +69,7 @@ class Gw2ApiService
         return self::safeRequest($url, $apiKey, $params, $timeout);
     }
 
-
+    
     /**
      * Ottiene le informazioni base dell’API key.
      */
@@ -397,11 +397,16 @@ class Gw2ApiService
      */
     public static function getEquipmentTabs(string $apiKey, string $characterName): array
     {
-        return self::requestAuthenticated(
-            "/v2/characters/" . urlencode($characterName) . "/equipmenttabs",
+        $encoded = rawurlencode($characterName);
+
+        $result = self::requestAuthenticated(
+            "/v2/characters/{$encoded}/equipmenttabs",
             $apiKey
         );
+
+        return is_array($result) ? $result : [];
     }
+
 
     /**
      * Controlla SE l'account appartiene a una o piu gilde:
