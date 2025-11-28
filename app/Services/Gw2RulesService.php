@@ -13,26 +13,57 @@ use Illuminate\Support\Facades\Log;
 class Gw2RulesService
 {
 
-    /**
-     * Controlla SE l'account appartiene a una o piu gilde:
-     */
-    public static function scanAccountGuilds(string $apiKey): array
-    {
-        try {
-            $account = Gw2ApiService::getAccount($apiKey); // GET /v2/account
 
-            if (!isset($account['guilds']) || empty($account['guilds'])) {
-                return []; // OK → nessuna gilda
+
+    /**
+     * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
+     */
+    private static function getInvalidEquipment(Character $character): array
+    {
+        if ($character->level <= 3) {
+            return [];
+        }
+
+        $apiKey = $character->account->api_key;
+        $name   = $character->name;
+
+        try {
+            $tabs = Gw2ApiService::getEquipmentTabs($apiKey, $name);
+        } catch (\Exception $e) {
+            Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
+            return [];
+        }
+
+        if (!isset($tabs['tabs'])) {
+            return [];
+        }
+
+        $active = collect($tabs['tabs'])->firstWhere('is_active', true);
+
+        if (!$active || empty($active['equipment'])) {
+            return [];
+        }
+
+        $invalid = [];
+
+        foreach ($active['equipment'] as $item) {
+
+            $slot = $item['slot'];
+
+            // CONSENTITO: solo weapon*
+            if (str_starts_with($slot, 'Weapon')) {
+                continue;
             }
 
-            return $account['guilds']; // Lista ID gilde
-        } catch (\Exception $e) {
-            Log::error("Errore chiamando /v2/account per controllo gilde: " . $e->getMessage());
-            return ['error' => true];
+            // VIETATO: tutto il resto
+            $invalid[] = [
+                'slot' => $slot,
+                'id'   => $item['id'] ?? null,
+            ];
         }
+
+        return $invalid;
     }
-
-
 
     /**
      * Controlla UN personaggio:
@@ -114,7 +145,7 @@ class Gw2RulesService
 
             // CONTROLLO GILDE ACCOUNT
             $apiKey = $char->account->api_key;
-            $guilds = self::scanAccountGuilds($apiKey);
+            $guilds = Gw2ApiService::scanAccountGuilds($apiKey);
 
             $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53';
 

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Services\Gw2ApiService;
+use App\Models\Character;
 
 /**
  * Servizio per interfacciarsi con le API pubbliche di Guild Wars 2.
@@ -393,55 +394,21 @@ class Gw2ApiService
     }
 
     /**
-     * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
+     * Controlla SE l'account appartiene a una o piu gilde:
      */
-    private static function getInvalidEquipment(Character $character): array
+    public static function scanAccountGuilds(string $apiKey): array
     {
-        if ($character->level <= 3) {
-            return [];
-        }
-
-        $apiKey = $character->account->api_key;
-        $name   = $character->name;
-
         try {
-            $tabs = Gw2ApiService::getEquipmentTabs($apiKey, $name);
-        } catch (\Exception $e) {
-            Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
-            return [];
-        }
+            $account = Gw2ApiService::getAccount($apiKey); // GET /v2/account
 
-        if (!isset($tabs['tabs'])) {
-            return [];
-        }
-
-        $active = collect($tabs['tabs'])->firstWhere('is_active', true);
-
-        if (!$active || empty($active['equipment'])) {
-            return [];
-        }
-
-        $invalid = [];
-
-        foreach ($active['equipment'] as $item) {
-
-            $slot = $item['slot'];
-
-            // CONSENTITO: solo weapon*
-            if (str_starts_with($slot, 'Weapon')) {
-                continue;
+            if (!isset($account['guilds']) || empty($account['guilds'])) {
+                return []; // OK → nessuna gilda
             }
 
-            // VIETATO: tutto il resto
-            $invalid[] = [
-                'slot' => $slot,
-                'id'   => $item['id'] ?? null,
-            ];
+            return $account['guilds']; // Lista ID gilde
+        } catch (\Exception $e) {
+            Log::error("Errore chiamando /v2/account per controllo gilde: " . $e->getMessage());
+            return ['error' => true];
         }
-
-        return $invalid;
     }
-
-
-
 }
