@@ -334,8 +334,15 @@ class Gw2ApiService
             60
         );
 
-        // L’API restituisce un ARRAY di TAB
-        if (!$data || !is_array($data)) {
+        // Personaggio senza build → API bug: "unknown error"
+        if (!$data || isset($data['text'])) {
+
+            if (isset($data['text']) && $data['text'] === 'unknown error') {
+                Log::info("ℹ️ Nessuna build impostata per {$characterName} — build tabs vuoti");
+                return null;
+            }
+
+            Log::warning("⚠️ Errore buildtabs per {$characterName}: " . json_encode($data));
             return null;
         }
 
