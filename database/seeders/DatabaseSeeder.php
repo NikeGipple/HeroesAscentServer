@@ -17,8 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             EventTypeSeeder::class,
-            BannedSkillsSeeder::class,
-            BannedTraitsSeeder::class,
+            ForbiddenMapSeeder::class,
         ]);
     }
 }
