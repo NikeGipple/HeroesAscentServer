@@ -18,59 +18,14 @@ class Gw2RulesService
     /**
      * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
      */
-    // private static function getInvalidEquipment(Character $character): array
-    // {
-    //     if ($character->level <= 3) {
-    //         return [];
-    //     }
-
-    //     $apiKey = $character->account->api_key;
-    //     $name   = $character->name;
-
-    //     try {
-    //         $activeTab = Gw2ApiService::getActiveEquipmentTab($apiKey, $name);
-    //     } catch (\Exception $e) {
-    //         Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
-    //         return [];
-    //     }
-
-    //     if (!$activeTab || empty($activeTab['equipment'])) {
-    //         return [];
-    //     }
-
-    //     $invalid = [];
-
-    //     foreach ($activeTab['equipment'] as $item) {
-    //         $slot = $item['slot'] ?? null;
-
-    //         if (!$slot) continue;
-
-    //         // CONSENTITO: solo weapon*
-    //         if (str_starts_with($slot, 'Weapon')) {
-    //             continue;
-    //         }
-
-    //         // TUTTO IL RESTO è vietato
-    //         $invalid[] = [
-    //             'slot' => $slot,
-    //             'id'   => $item['id'] ?? null,
-    //         ];
-    //     }
-
-    //     return $invalid;
-    // }
-
     private static function getInvalidEquipment(Character $character): array
     {
         if ($character->level <= 3) {
-            Log::debug("Equip check skipped: {$character->name} è <= level 3");
             return [];
         }
 
         $apiKey = $character->account->api_key;
         $name   = $character->name;
-
-        Log::debug("🛠 [EQUIP] Inizio controllo equip per {$name}");
 
         try {
             $activeTab = Gw2ApiService::getActiveEquipmentTab($apiKey, $name);
@@ -79,60 +34,32 @@ class Gw2RulesService
             return [];
         }
 
-        if (!$activeTab) {
-            Log::warning("⚠️ [EQUIP] Nessuna tab attiva trovata per {$name}");
-            return [];
-        }
-
-        // Log descrittivo della tab attiva
-        Log::debug("🧩 [EQUIP] Tab attiva per {$name}: tab={$activeTab['tab']}, is_active=" . ($activeTab['is_active'] ? 'true' : 'false'));
-
-        if (empty($activeTab['equipment'])) {
-            Log::debug("🧪 [EQUIP] Nessun equipment nella tab attiva per {$name}");
+        if (!$activeTab || empty($activeTab['equipment'])) {
             return [];
         }
 
         $invalid = [];
 
-        // Log lista completa degli slot equipaggiati
-        $slotsList = collect($activeTab['equipment'])->pluck('slot')->implode(', ');
-        Log::debug("🎒 [EQUIP] Slot equipaggiati per {$name}: {$slotsList}");
-
         foreach ($activeTab['equipment'] as $item) {
-
             $slot = $item['slot'] ?? null;
-            $id   = $item['id'] ?? null;
 
-            if (!$slot) {
-                Log::warning("⚠️ [EQUIP] Slot senza nome per {$name}: " . json_encode($item));
-                continue;
-            }
+            if (!$slot) continue;
 
-            // CONSENTITO → solo "Weapon*"
+            // CONSENTITO: solo weapon*
             if (str_starts_with($slot, 'Weapon')) {
-                Log::debug("✅ [EQUIP] Slot consentito: {$slot} (id={$id})");
                 continue;
             }
 
-            // VIETATO → il resto
-            Log::warning("❌ [EQUIP] Slot vietato rilevato: {$slot} (id={$id}) per {$name}");
-
+            // TUTTO IL RESTO è vietato
             $invalid[] = [
                 'slot' => $slot,
-                'id'   => $id,
+                'id'   => $item['id'] ?? null,
             ];
-        }
-
-        // Log finale esito
-        if (empty($invalid)) {
-            Log::debug("🟢 [EQUIP] Nessun equip vietato rilevato per {$name}");
-        } else {
-            $invalidSlots = collect($invalid)->pluck('slot')->implode(', ');
-            Log::warning("🚫 [EQUIP] Equip vietati trovati per {$name}: {$invalidSlots}");
         }
 
         return $invalid;
     }
+
 
 
 
@@ -262,17 +189,10 @@ class Gw2RulesService
 
             $hasTraitViolations = !empty($violations['traits']);
             $hasSkillViolations = !empty($violations['skills']);
+            $hasEquipViolations = !empty($violations['equipment']);
 
-            // Nessuna violazione
-            if (!$hasTraitViolations && !$hasSkillViolations) {
-                $out("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
-                $char->update(['last_check_at' => now()]);
-                $processed++;
-                continue;
-            }
-
-            // Registra eventi per ogni TRAIT vietato
-            if (!empty($violations['traits'])) {
+            // === TRAIT VIETATI ===
+            if ($hasTraitViolations) {
 
                 $firstTraitId = $violations['traits'][0];
 
@@ -281,16 +201,16 @@ class Gw2RulesService
 
                 CharacterEvent::record($char, 'BUILD_FORBIDDEN_TRAIT', [
                     'details'    => "Trait vietato rilevato",
-                    'buff_id'    => $firstTraitId,          
+                    'buff_id'    => $firstTraitId,
                     'buff_name'  => $firstTraitName,
                 ]);
 
-                $out("⚠️ [SCAN] Trait vietati per {$char->name} → Primo trovato: {$firstTraitName} (ID {$firstTraitId})");
+                $out("⚠️ [SCAN] Trait vietati per {$char->name} → Primo: {$firstTraitName} (ID {$firstTraitId})");
                 Log::warning("Trait vietati per {$char->name}. Primo: {$firstTraitName} (ID {$firstTraitId})");
             }
 
-            // Registra eventi per ogni SKILL vietata
-            if (!empty($violations['skills'])) {
+            // === SKILL VIETATE ===
+            if ($hasSkillViolations) {
 
                 $firstSkillId = $violations['skills'][0];
 
@@ -299,43 +219,45 @@ class Gw2RulesService
 
                 CharacterEvent::record($char, 'BUILD_FORBIDDEN_SKILL', [
                     'details'    => "Skill vietata rilevata",
-                    'buff_id'    => $firstSkillId,          
+                    'buff_id'    => $firstSkillId,
                     'buff_name'  => $firstSkillName,
                 ]);
 
-                $out("⚠️ [SCAN] Skill vietate per {$char->name} → Prima trovata: {$firstSkillName} (ID {$firstSkillId})");
+                $out("⚠️ [SCAN] Skill vietate per {$char->name} → Prima: {$firstSkillName} (ID {$firstSkillId})");
                 Log::warning("Skill vietate per {$char->name}. Prima: {$firstSkillName} (ID {$firstSkillId})");
             }
 
-
             // === EQUIPAGGIAMENTO VIETATO ===
-            if (!empty($violations['equipment'])) {
+            if ($hasEquipViolations) {
 
-                // Prendiamo SOLO il primo pezzo non consentito
                 $first = $violations['equipment'][0];
                 $firstId = $first['id'] ?? null;
 
                 CharacterEvent::record($char, 'EQUIPMENT_INVALID', [
-                    'details'    => "Equipaggiamento non consentito",
-                    'buff_id'    => $firstId,     
-                    'buff_name'  => 'Forbidden Equipment',
+                    'details'   => "Equipaggiamento non consentito",
+                    'buff_id'   => $firstId,
+                    'buff_name' => 'Forbidden Equipment',
                 ]);
 
-                Log::warning("Equip non valido per {$char->name}. Primo slot non valido: {$first['slot']} (ID {$firstId})");
+                $out("⚠️ [SCAN] Equip vietato per {$char->name} → Slot {$first['slot']} (ID {$firstId})");
+                Log::warning("Equip vietato per {$char->name}. Primo slot non valido: {$first['slot']} (ID {$firstId})");
             }
 
+            // === Se non c’è NESSUNA violazione di nessun tipo ===
+            if (!$hasTraitViolations && !$hasSkillViolations && !$hasEquipViolations) {
+                $out("🟩 [SCAN] OK — Nessuna violazione per {$char->name}");
+                $char->update(['last_check_at' => now()]);
+                $processed++;
+                continue;
+            }
 
+            // ===== SQUALIFICA AUTOMATICA SE EVENTO CRITICO =====
+            $char->update(['last_check_at' => now()]);
 
-            // Aggiorna sempre last_check_at
-            $char->update([
-                'last_check_at' => now(),
-            ]);
-
-            // Se almeno un evento critico è stato creato, il personaggio ora è squalificato
             if ($char->fresh()->isDisqualified()) {
                 $disqualified++;
-                Log::warning("Personaggio {$char->name} SQUALIFICATO per build non valida.", $violations);
-                $out("🚨 [SCAN] SQUALIFICATO {$char->name} per build non valida");
+                $out("🚨 [SCAN] SQUALIFICATO {$char->name}");
+                Log::warning("Squalifica attivata per {$char->name}", $violations);
             }
 
             $processed++;
