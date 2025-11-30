@@ -407,7 +407,7 @@ class Gw2ApiService
         $encoded = rawurlencode($characterName);
 
         $result = self::requestAuthenticated(
-            "/v2/characters/{$encoded}/equipmenttabs",
+            "/v2/characters/{$encoded}/equipmenttabs?tabs=all",
             $apiKey
         );
 

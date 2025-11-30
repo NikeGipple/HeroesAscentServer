@@ -70,7 +70,15 @@ class Gw2RulesService
      * - ritorna array con violazioni o array vuoto
      */
     public static function scanCharacter(Character $character): array
-    {
+    {   
+        if ($character->level <= 3) {
+            return [
+                'traits' => [],
+                'skills' => [],
+                'equipment' => [],
+            ];
+        }
+
         $apiKey = $character->account->api_key;
         $name   = $character->name;
 

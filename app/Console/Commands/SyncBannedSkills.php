@@ -29,8 +29,37 @@ class SyncBannedSkills extends Command
         // LISTA SKILL BANNATE (versione leggibile)
         // ────────────────────────────────────────────
         $banned = [
-            10541, // Necro - Summon Bone Minions
-            10533, // Necro - Summon Bone Fiend
+            // —— GUARDIAN ——
+            // —— REVENANT ——
+            // —— WARRIOR ——
+            // —— ENGINEER ——
+            5857,  // Healing Turret
+
+            5836,  // Flame Turret
+            5900,  // Flame Turret - Smoke Screen
+            5837,  // Net Turret
+            5893,  // Net Turret - Electrified Net
+            5818,  // Rifle Turret
+            5874,  // Rifle Turret - Automatic Fire
+            6093,  // Harpoon Turret
+            6098,  // Harpoon Turret - Automatic Fire
+            5912,  // Rocket Turret
+            5913,  // Rocket Turret - Explosive Rockets
+            5838,  // Thumper Turret
+            5889,  // Thumper Turret - Thump
+            5868,  // Supply Crate
+            30264, // Supply Crate - Overcharge Supply Crate
+            6183,  // Supply Crate (underwater)
+            30230, // Overcharge Supply Crate (underwater)
+
+            // —— RANGER ——
+            // —— THIEF ——
+            // —— ELEMENTALIST ——
+            // —— MESMER ——
+
+            // —— NECROMANCER ——
+            10541, // Summon Bone Minions
+            10533, // Summon Bone Fiend
         ];
 
         // ────────────────────────────────────────────
