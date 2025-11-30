@@ -407,12 +407,36 @@ class Gw2ApiService
         $encoded = rawurlencode($characterName);
 
         $result = self::requestAuthenticated(
-            "/v2/characters/{$encoded}/equipmenttabs?tabs=all",
-            $apiKey
+            "/v2/characters/{$encoded}/equipmenttabs",
+            $apiKey,
+            ['tabs' => 'all']
         );
 
         return is_array($result) ? $result : [];
     }
+
+    /**
+     * Ritorna il solo equip tab attivo del personaggio.
+     */
+    public static function getActiveEquipmentTab(string $apiKey, string $characterName): ?array
+    {
+        $tabs = self::getEquipmentTabs($apiKey, $characterName);
+
+        if (!is_array($tabs) || empty($tabs)) {
+            return null;
+        }
+
+        // Prima cerca la tab attiva dichiarata dall'API
+        $active = collect($tabs)->firstWhere('is_active', true);
+
+        if ($active) {
+            return $active;
+        }
+
+        // Fallback estremo: ritorna la prima tab
+        return $tabs[0] ?? null;
+    }
+
 
 
     /**

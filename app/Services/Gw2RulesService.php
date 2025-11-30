@@ -28,34 +28,29 @@ class Gw2RulesService
         $name   = $character->name;
 
         try {
-            $tabs = Gw2ApiService::getEquipmentTabs($apiKey, $name);
+            $activeTab = Gw2ApiService::getActiveEquipmentTab($apiKey, $name);
         } catch (\Exception $e) {
             Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
             return [];
         }
 
-        if (!isset($tabs['tabs'])) {
-            return [];
-        }
-
-        $active = collect($tabs['tabs'])->firstWhere('is_active', true);
-
-        if (!$active || empty($active['equipment'])) {
+        if (!$activeTab || empty($activeTab['equipment'])) {
             return [];
         }
 
         $invalid = [];
 
-        foreach ($active['equipment'] as $item) {
+        foreach ($activeTab['equipment'] as $item) {
+            $slot = $item['slot'] ?? null;
 
-            $slot = $item['slot'];
+            if (!$slot) continue;
 
             // CONSENTITO: solo weapon*
             if (str_starts_with($slot, 'Weapon')) {
                 continue;
             }
 
-            // VIETATO: tutto il resto
+            // TUTTO IL RESTO è vietato
             $invalid[] = [
                 'slot' => $slot,
                 'id'   => $item['id'] ?? null,
@@ -64,6 +59,7 @@ class Gw2RulesService
 
         return $invalid;
     }
+
 
     /**
      * Controlla UN personaggio:
