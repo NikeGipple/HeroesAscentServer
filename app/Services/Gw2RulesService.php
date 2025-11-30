@@ -234,9 +234,9 @@ class Gw2RulesService
                 $firstId = $first['id'] ?? null;
 
                 CharacterEvent::record($char, 'EQUIPMENT_INVALID', [
-                    'details'   => "Equipaggiamento non consentito",
+                    'details'   => "Server event: EQUIPMENT_INVALID",
                     'buff_id'   => $firstId,
-                    'buff_name' => 'Forbidden Equipment',
+                    'buff_name' => "Forbidden Slot: {$first['slot']}",
                 ]);
 
                 $out("⚠️ [SCAN] Equip vietato per {$char->name} → Slot {$first['slot']} (ID {$firstId})");
