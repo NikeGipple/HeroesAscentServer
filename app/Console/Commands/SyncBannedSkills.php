@@ -30,8 +30,11 @@ class SyncBannedSkills extends Command
         // ────────────────────────────────────────────
         $banned = [
             // —— GUARDIAN ——
+
             // —— REVENANT ——
+
             // —— WARRIOR ——
+
             // —— ENGINEER ——
             5857,  // Healing Turret
 
@@ -53,8 +56,11 @@ class SyncBannedSkills extends Command
             30230, // Overcharge Supply Crate (underwater)
 
             // —— RANGER ——
+            
             // —— THIEF ——
+
             // —— ELEMENTALIST ——
+
             // —— MESMER ——
 
             // —— NECROMANCER ——
