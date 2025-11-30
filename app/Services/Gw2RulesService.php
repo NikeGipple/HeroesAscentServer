@@ -18,14 +18,59 @@ class Gw2RulesService
     /**
      * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
      */
+    // private static function getInvalidEquipment(Character $character): array
+    // {
+    //     if ($character->level <= 3) {
+    //         return [];
+    //     }
+
+    //     $apiKey = $character->account->api_key;
+    //     $name   = $character->name;
+
+    //     try {
+    //         $activeTab = Gw2ApiService::getActiveEquipmentTab($apiKey, $name);
+    //     } catch (\Exception $e) {
+    //         Log::error("Errore /equipmenttabs per {$name}: " . $e->getMessage());
+    //         return [];
+    //     }
+
+    //     if (!$activeTab || empty($activeTab['equipment'])) {
+    //         return [];
+    //     }
+
+    //     $invalid = [];
+
+    //     foreach ($activeTab['equipment'] as $item) {
+    //         $slot = $item['slot'] ?? null;
+
+    //         if (!$slot) continue;
+
+    //         // CONSENTITO: solo weapon*
+    //         if (str_starts_with($slot, 'Weapon')) {
+    //             continue;
+    //         }
+
+    //         // TUTTO IL RESTO è vietato
+    //         $invalid[] = [
+    //             'slot' => $slot,
+    //             'id'   => $item['id'] ?? null,
+    //         ];
+    //     }
+
+    //     return $invalid;
+    // }
+
     private static function getInvalidEquipment(Character $character): array
     {
         if ($character->level <= 3) {
+            Log::debug("Equip check skipped: {$character->name} è <= level 3");
             return [];
         }
 
         $apiKey = $character->account->api_key;
         $name   = $character->name;
+
+        Log::debug("🛠 [EQUIP] Inizio controllo equip per {$name}");
 
         try {
             $activeTab = Gw2ApiService::getActiveEquipmentTab($apiKey, $name);
@@ -34,31 +79,61 @@ class Gw2RulesService
             return [];
         }
 
-        if (!$activeTab || empty($activeTab['equipment'])) {
+        if (!$activeTab) {
+            Log::warning("⚠️ [EQUIP] Nessuna tab attiva trovata per {$name}");
+            return [];
+        }
+
+        // Log descrittivo della tab attiva
+        Log::debug("🧩 [EQUIP] Tab attiva per {$name}: tab={$activeTab['tab']}, is_active=" . ($activeTab['is_active'] ? 'true' : 'false'));
+
+        if (empty($activeTab['equipment'])) {
+            Log::debug("🧪 [EQUIP] Nessun equipment nella tab attiva per {$name}");
             return [];
         }
 
         $invalid = [];
 
+        // Log lista completa degli slot equipaggiati
+        $slotsList = collect($activeTab['equipment'])->pluck('slot')->implode(', ');
+        Log::debug("🎒 [EQUIP] Slot equipaggiati per {$name}: {$slotsList}");
+
         foreach ($activeTab['equipment'] as $item) {
+
             $slot = $item['slot'] ?? null;
+            $id   = $item['id'] ?? null;
 
-            if (!$slot) continue;
-
-            // CONSENTITO: solo weapon*
-            if (str_starts_with($slot, 'Weapon')) {
+            if (!$slot) {
+                Log::warning("⚠️ [EQUIP] Slot senza nome per {$name}: " . json_encode($item));
                 continue;
             }
 
-            // TUTTO IL RESTO è vietato
+            // CONSENTITO → solo "Weapon*"
+            if (str_starts_with($slot, 'Weapon')) {
+                Log::debug("✅ [EQUIP] Slot consentito: {$slot} (id={$id})");
+                continue;
+            }
+
+            // VIETATO → il resto
+            Log::warning("❌ [EQUIP] Slot vietato rilevato: {$slot} (id={$id}) per {$name}");
+
             $invalid[] = [
                 'slot' => $slot,
-                'id'   => $item['id'] ?? null,
+                'id'   => $id,
             ];
+        }
+
+        // Log finale esito
+        if (empty($invalid)) {
+            Log::debug("🟢 [EQUIP] Nessun equip vietato rilevato per {$name}");
+        } else {
+            $invalidSlots = collect($invalid)->pluck('slot')->implode(', ');
+            Log::warning("🚫 [EQUIP] Equip vietati trovati per {$name}: {$invalidSlots}");
         }
 
         return $invalid;
     }
+
 
 
     /**
