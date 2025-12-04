@@ -115,24 +115,65 @@ class CharacterController extends Controller
                 }
         }
         
+        // === EVENTO LOGOUT ===
+        if ($eventCode === 'LOGOUT') {
+
+            Log::info("🔻 LOGOUT ricevuto per {$data['name']}", [
+                'account_id' => $account->id,
+                'character_id' => $character->id ?? null,
+            ]);
+
+            CharacterEvent::record($character, 'LOGOUT', [
+                'details' => 'Character has returned to character selection',
+                'map_id'  => $data['map_id'] ?? null,
+                'state'   => $data['state'] ?? null,
+            ]);
+
+            return response()->json([
+                'status' => 'ok',
+                'event' => [
+                    'code' => 'LOGOUT',
+                    'points' => 0,
+                    'is_critical' => false,
+                    'disqualified' => $character->isDisqualified(),
+                ],
+            ]);
+        }
+
+
         // === CONTROLLO MAPPE VIETATE ===
         if ($eventCode === 'MAP_CHANGED') {
 
-            $forbidden = ForbiddenMap::where('map_id', (int)$data['map_id'])->first();
+            $mapId   = (int)$data['map_id'];
+            $mapType = (int)($data['map_type'] ?? -1);
 
-            if ($forbidden) {
+            $forbidden = ForbiddenMap::where('map_id', $mapId)->first();
+
+            // 🔥 1) MapType == 2 ovvero sPvP → automaticamente vietata
+            if ($mapType === 2) {
+
+                Log::warning("⛔ Mappa sPvP rilevata!", [
+                    'character' => $data['name'],
+                    'map_id'    => $mapId,
+                    'map_type'  => $mapType,
+                ]);
+
+                $eventCode = 'MAP_CHANGED_INVALID';
+            }
+            // 🔥 2) Mappa presente nella lista ForbiddenMap
+            elseif ($forbidden) {
 
                 Log::warning("⛔ Mappa Vietata Rilevata!", [
                     'character' => $data['name'],
-                    'map_id'    => $data['map_id'],
+                    'map_id'    => $mapId,
                     'map_name'  => $forbidden->name,
                     'type'      => $forbidden->type,
                 ]);
 
-                // Sovrascrivi l'evento
                 $eventCode = 'MAP_CHANGED_INVALID';
             }
         }
+
 
         // === BUFF PROIBITI (Cibo, Enhancement, Reinforced Armor) ===
         if ($eventCode === 'BUFF_APPLIED') {
@@ -202,6 +243,9 @@ class CharacterController extends Controller
                 if (array_key_exists('is_login', $data) && !$request->boolean('is_login')) {
                     $errors[] = 'Payload says event=LOGIN but is_login flag is false';
                 }
+                break;
+            
+            case 'LOGOUT':
                 break;
 
             case 'DOWNED':
@@ -366,6 +410,11 @@ class CharacterController extends Controller
             Log::info("🔑 Character {$character->name} logged in successfully", [
                 'account_name' => $account->account_name,
                 'map_id' => $data['map_id'],
+            ]);
+        
+        } elseif ($eventCode === 'LOGOUT') {
+            Log::info("🔑 Character {$character->name} logged out", [
+                'map_id' => $data['map_id'] ?? null,
             ]);
         } elseif ($eventCode === 'LEVEL_UP') {
             Log::info("🎉 Level Up! {$character->name} è salito al livello {$data['level']}", [

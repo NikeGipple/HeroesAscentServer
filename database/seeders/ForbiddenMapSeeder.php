@@ -70,6 +70,13 @@ class ForbiddenMapSeeder extends Seeder
                 'type'   => 'wvw',
             ],
 
+            // === PVP MAPS ===
+            [
+                'map_id' => 350,
+                'name'   => 'Heart of the Mists',
+                'type'   => 'pvp',
+            ],
+
         ]);
     }
 }

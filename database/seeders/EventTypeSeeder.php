@@ -20,6 +20,15 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => false,
                 'color' => 'info',
             ],
+            [
+                'code' => 'LOGOUT',
+                'name' => 'Logout',
+                'description' => 'Il personaggio è uscito dal gioco ed è tornato alla schermata di selezione',
+                'category' => 'login',
+                'points' => 0,
+                'is_critical' => false,
+                'color' => 'info',
+            ],
 
             // === STATO PERSONAGGIO ===
             [
