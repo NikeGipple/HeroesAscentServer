@@ -9,6 +9,8 @@ class EventTypeSeeder extends Seeder
 {
     public function run(): void
     {
+        EventType::truncate();
+        
         EventType::insert([
             // === LOGIN ===
             [
