@@ -10,7 +10,7 @@ class EventTypeSeeder extends Seeder
     public function run(): void
     {
         EventType::truncate();
-        
+
         EventType::insert([
             // === LOGIN ===
             [
@@ -59,15 +59,6 @@ class EventTypeSeeder extends Seeder
                 'points' => 0,
                 'is_critical' => true,
                 'color' => 'danger',
-            ],
-            [
-                'code' => 'RESPAWN',
-                'name' => 'Respawn',
-                'description' => 'Il personaggio è rinato dopo la morte',
-                'category' => 'info',
-                'points' => 0,
-                'is_critical' => false,
-                'color' => 'secondary',
             ],
 
             // === MOVIMENTO / CAMBI MAPPPA / MOUNT ===
