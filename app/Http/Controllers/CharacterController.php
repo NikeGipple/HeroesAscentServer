@@ -260,12 +260,6 @@ class CharacterController extends Controller
                 }
                 break;
 
-            case 'RESPAWN':
-                if (($state & $CS_IS_ALIVE) === 0) {
-                    $errors[] = 'State bit does not indicate alive while event is RESPAWN';
-                }
-                break;
-
             case 'MOUNT_CHANGED':
                 if (!array_key_exists('mount', $data)) {
                     $errors[] = 'Missing mount index for MOUNT_CHANGED';
@@ -429,10 +423,6 @@ class CharacterController extends Controller
             Log::warning("💀 Character {$character->name} has died", [
                 'map_id' => $data['map_id'],
             ]);
-        // } elseif ($eventCode === 'RESPAWN') {
-        //     Log::info("ℹ️ Character {$character->name} has respawned", [
-        //         'map_id' => $data['map_id'],
-        //     ]);
         } elseif ($eventCode === 'MAP_CHANGED') {
             Log::info("ℹ️ Character {$character->name} changed map", [
                 'new_map_id' => $data['map_id'],
