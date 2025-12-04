@@ -124,7 +124,7 @@ class CharacterController extends Controller
             ]);
 
             CharacterEvent::record($character, 'LOGOUT', [
-                'details' => 'Character has returned to character selection',
+                'details' => 'Client event: LOGOUT',
                 'map_id'  => $data['map_id'] ?? null,
                 'state'   => $data['state'] ?? null,
             ]);
