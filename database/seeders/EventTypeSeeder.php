@@ -31,15 +31,6 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => false,
                 'color' => 'info',
             ],
-            [
-                'code' => 'FORCED_LOGOUT',
-                'name' => 'Logout Forzato',
-                'description' => 'Logout inviato automaticamente dal client quando il gioco si chiude o l’addon viene scaricato.',
-                'category' => 'login',
-                'points' => 0,
-                'is_critical' => false,
-                'color' => 'info',
-            ],
 
             // === STATO PERSONAGGIO ===
             [
