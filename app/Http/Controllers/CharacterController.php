@@ -86,51 +86,51 @@ class CharacterController extends Controller
         // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
-        // === EVENTO FORCED_LOGOUT ===
-        if ($eventCode === 'FORCED_LOGOUT') {
+        // // === EVENTO FORCED_LOGOUT ===
+        // if ($eventCode === 'FORCED_LOGOUT') {
 
-            Log::info("🔻 FORCED_LOGOUT ricevuto per account {$account->id}");
+        //     Log::info("🔻 FORCED_LOGOUT ricevuto per account {$account->id}");
 
-            // Trova l’ultimo personaggio che ha fatto LOGIN
-            $character = Character::where('account_id', $account->id)
-                ->whereHas('events', function ($q) {
-                    $q->where('event_code', 'LOGIN');
-                })
-                ->with(['events' => function ($q) {
-                    $q->where('event_code', 'LOGIN')->latest('detected_at');
-                }])
-                ->get()
-                ->sortByDesc(fn($c) => optional($c->events->first())->detected_at)
-                ->first();
+        //     // Trova l’ultimo personaggio che ha fatto LOGIN
+        //     $character = Character::where('account_id', $account->id)
+        //         ->whereHas('events', function ($q) {
+        //             $q->where('event_code', 'LOGIN');
+        //         })
+        //         ->with(['events' => function ($q) {
+        //             $q->where('event_code', 'LOGIN')->latest('detected_at');
+        //         }])
+        //         ->get()
+        //         ->sortByDesc(fn($c) => optional($c->events->first())->detected_at)
+        //         ->first();
 
-            if (!$character) {
-                Log::warning("⚠️ Nessun personaggio trovato con un login precedente", [
-                    'account_id' => $account->id
-                ]);
+        //     if (!$character) {
+        //         Log::warning("⚠️ Nessun personaggio trovato con un login precedente", [
+        //             'account_id' => $account->id
+        //         ]);
 
-                return response()->json([
-                    'status' => 'ok',
-                    'message' => 'No character with recorded LOGIN found — nothing to logout.',
-                ]);
-            }
+        //         return response()->json([
+        //             'status' => 'ok',
+        //             'message' => 'No character with recorded LOGIN found — nothing to logout.',
+        //         ]);
+        //     }
 
-            // Registra l'evento di logout forzato
-            CharacterEvent::record($character, 'FORCED_LOGOUT', [
-                'details' => 'Client event: FORCED_LOGOUT',
-            ]);
+        //     // Registra l'evento di logout forzato
+        //     CharacterEvent::record($character, 'FORCED_LOGOUT', [
+        //         'details' => 'Client event: FORCED_LOGOUT',
+        //     ]);
 
-            Log::info("🔻 FORCED_LOGOUT registrato per {$character->name}");
+        //     Log::info("🔻 FORCED_LOGOUT registrato per {$character->name}");
 
-            return response()->json([
-                'status' => 'ok',
-                'event' => [
-                    'code' => 'FORCED_LOGOUT',
-                    'points' => 0,
-                    'is_critical' => false,
-                    'disqualified' => $character->isDisqualified(),
-                ],
-            ]);
-        }
+        //     return response()->json([
+        //         'status' => 'ok',
+        //         'event' => [
+        //             'code' => 'FORCED_LOGOUT',
+        //             'points' => 0,
+        //             'is_critical' => false,
+        //             'disqualified' => $character->isDisqualified(),
+        //         ],
+        //     ]);
+        // }
 
 
         // 4. Recupera o crea il personaggio
