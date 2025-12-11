@@ -159,7 +159,7 @@ class CharacterController extends Controller
 
             // === Controllo abuso ===
             $startOfDay = now()->startOfDay();
-            $limit = 2; // se supera 2 eventi LOWHP → abuso
+            $limit = 1; // alla seconda volta scatta l’abus
 
             $recent = $character->events()
                 ->where('event_code', 'LOGOUT_LOW_HP')
