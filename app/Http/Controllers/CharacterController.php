@@ -140,6 +140,65 @@ class CharacterController extends Controller
             ]);
         }
 
+        // === LOGOUT_LOW_HP ===
+        if ($eventCode === 'LOGOUT_LOW_HP') {
+
+            Log::warning("⚠️ LOGOUT_LOW_HP rilevato per {$data['name']}", [
+                'account_id'   => $account->id,
+                'character_id' => $character->id ?? null,
+                'state'        => $data['state'] ?? null,
+                'map_id'       => $data['map_id'] ?? null,
+            ]);
+
+            // Registra l’evento
+            CharacterEvent::record($character, 'LOGOUT_LOW_HP', [
+                'details' => 'Client event: LOGOUT_LOW_HP',
+                'map_id'  => $data['map_id'] ?? null,
+                'state'   => $data['state'] ?? null,
+            ]);
+
+            // === Controllo abuso ===
+            $startOfDay = now()->startOfDay();
+            $limit = 2; // se supera 2 eventi LOWHP → abuso
+
+            $recent = $character->events()
+                ->where('event_code', 'LOGOUT_LOW_HP')
+                ->where('detected_at', '>=', $startOfDay)
+                ->count();
+
+            // === Abuso rilevato: registra evento dedicato ===
+            if ($recent > $limit) {
+
+                Log::error("⛔ ABUSO LOGOUT_LOW_HP! Evento dedicato registrato per {$character->name}", [
+                    'character_id' => $character->id,
+                    'count'        => $recent,
+                ]);
+
+                // Registra evento ABUSE_LOGOUT_LOW_HP (evento critico)
+                $abuseEvent = CharacterEvent::record($character, 'ABUSE_LOGOUT_LOW_HP', [
+                    'details' => "System event: ABUSE_LOGOUT_LOW_HP events",
+                    'map_id'  => $data['map_id'] ?? null,
+                    'state'   => $data['state'] ?? null,
+                ]);
+
+                // Dopo il record, il personaggio è ora squalificato
+                return $this->buildDisqualifiedResponse($character);
+            }
+
+
+            // Risposta normale
+            return response()->json([
+                'status' => 'ok',
+                'event' => [
+                    'code'         => 'LOGOUT_LOW_HP',
+                    'points'       => 0,
+                    'is_critical'  => false,
+                    'disqualified' => $character->isDisqualified(),
+                ],
+            ]);
+        }
+
+
 
         // === CONTROLLO MAPPE VIETATE ===
         if ($eventCode === 'MAP_CHANGED') {

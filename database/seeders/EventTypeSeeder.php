@@ -31,6 +31,26 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => false,
                 'color' => 'info',
             ],
+            [
+                'code' => 'LOGOUT_LOW_HP',
+                'name' => 'Logout in situazione critica',
+                'description' => 'Il personaggio ha effettuato il logout mentre era sotto il 50% di vita, indicando una possibile fuga da combattimento o da pericolo.',
+                'category' => 'login',
+                'points' => 0,
+                'is_critical' => false,
+                'color' => 'warning',
+            ],
+            [
+                'code' => 'ABUSE_LOGOUT_LOW_HP',
+                'name' => 'Abuso Logout in Situazione Critica',
+                'description' => 'Il personaggio ha effettuato troppi logout mentre era sotto il 50% di vita, indicando un comportamento abusivo volto a evitare la morte.',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+
+
 
             // === STATO PERSONAGGIO ===
             [
