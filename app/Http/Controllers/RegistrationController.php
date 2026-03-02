@@ -102,6 +102,13 @@ class RegistrationController extends Controller
 
             $bypass = Bypass::isBypassAccount($accountData['name']);
 
+            Log::info("🧪 BYPASS CHECK", [
+                'account_name' => $accountData['name'],
+                'bypass' => $bypass,
+                'config_bypass_accounts' => config('heroesascent.bypass_accounts'),
+                'env_raw' => env('HA_BYPASS_ACCOUNTS'), // solo per debug
+            ]);
+
             if (!$bypass && !empty($accountData['guilds'] ?? [])) {
 
                 // ID gilda permessa
