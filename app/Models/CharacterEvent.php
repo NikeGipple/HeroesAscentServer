@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use App\Support\HeroesAscent\Bypass;
 
 class CharacterEvent extends Model
 {
@@ -62,11 +63,18 @@ class CharacterEvent extends Model
      * - aggiorna il punteggio del personaggio
      * - se critico, marca il personaggio come squalificato
      */
-    public static function record(Character $character, string $code, array $context = [])
+    public static function record(Character $character, string $code, array $context = [], bool $ignoreCritical = false)
     {
         $eventType = EventType::where('code', $code)->firstOrFail();
 
-        return DB::transaction(function () use ($character, $eventType, $code, $context) {
+        // Carica l'account se non è già caricato (così eviti sorprese)
+        $character->loadMissing('account');
+
+        $accountName = $character->account->account_name ?? '';
+        $ignoreCritical = $ignoreCritical || Bypass::isBypassAccount($accountName);
+
+        return DB::transaction(function () use ($character, $eventType, $code, $context, $ignoreCritical) {
+
             // Crea l'evento senza 'points' nel mass assignment
             $event = self::create(array_merge($context, [
                 'character_id' => $character->id,
@@ -78,13 +86,13 @@ class CharacterEvent extends Model
             $event->points = (int) $eventType->points;
             $event->save();
 
-            // Aggiorna punteggio personaggio
-            if ($event->points !== 0) {
+            // Aggiorna punteggio personaggio (solo se NON bypass)
+            if (!$ignoreCritical && $event->points !== 0) {
                 $character->increment('score', $event->points);
             }
 
-            // Se evento critico → squalifica personaggio
-            if ($eventType->is_critical && is_null($character->disqualified_at)) {
+            // Se evento critico → squalifica personaggio (solo se NON bypass)
+            if (!$ignoreCritical && $eventType->is_critical && is_null($character->disqualified_at)) {
                 $character->update(['disqualified_at' => now()]);
             }
 

@@ -83,6 +83,9 @@ class CharacterController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Account not registered'], 404);
         }
 
+        // Controlla bypass
+        $bypass = $account->isBypass();
+
         // Normalizza codice evento
         $eventCode = strtoupper($data['event']);
 
@@ -104,6 +107,7 @@ class CharacterController extends Controller
 
             // Recuperiamo il personaggio esistente
             $character = Character::where('name', $data['name'])
+                ->where('account_id', $account->id)
                 ->latest('id')
                 ->first();
 
@@ -127,7 +131,9 @@ class CharacterController extends Controller
                 'details' => 'Client event: LOGOUT',
                 'map_id'  => $data['map_id'] ?? null,
                 'state'   => $data['state'] ?? null,
-            ]);
+                
+            ], $bypass
+            );
 
             return response()->json([
                 'status' => 'ok',
@@ -135,7 +141,7 @@ class CharacterController extends Controller
                     'code' => 'LOGOUT',
                     'points' => 0,
                     'is_critical' => false,
-                    'disqualified' => $character->isDisqualified(),
+                    'disqualified' => (!$bypass && $character->isDisqualified()),
                 ],
             ]);
         }
@@ -155,7 +161,9 @@ class CharacterController extends Controller
                 'details' => 'Client event: LOGOUT_LOW_HP',
                 'map_id'  => $data['map_id'] ?? null,
                 'state'   => $data['state'] ?? null,
-            ]);
+
+            ], $bypass
+            );
 
             // === Controllo abuso ===
             $startOfDay = now()->startOfDay();
@@ -179,10 +187,24 @@ class CharacterController extends Controller
                     'details' => "System event: ABUSE_LOGOUT_LOW_HP events",
                     'map_id'  => $data['map_id'] ?? null,
                     'state'   => $data['state'] ?? null,
-                ]);
+                    
+                ], $bypass
+                );
 
                 // Dopo il record, il personaggio è ora squalificato
-                return $this->buildDisqualifiedResponse($character);
+                if (!$bypass) {
+                    return $this->buildDisqualifiedResponse($character);
+                }
+                // bypass: rispondi subito e chiudi
+                return response()->json([
+                    'status' => 'ok',
+                    'event' => [
+                        'code'         => 'ABUSE_LOGOUT_LOW_HP',
+                        'points'       => 0,
+                        'is_critical'  => false,
+                        'disqualified' => (!$bypass && $character->isDisqualified()),
+                    ],
+                ]);
             }
 
 
@@ -193,7 +215,7 @@ class CharacterController extends Controller
                     'code'         => 'LOGOUT_LOW_HP',
                     'points'       => 0,
                     'is_critical'  => false,
-                    'disqualified' => $character->isDisqualified(),
+                    'disqualified' => (!$bypass && $character->isDisqualified()),
                 ],
             ]);
         }
@@ -278,7 +300,7 @@ class CharacterController extends Controller
         }
 
         // 5. Controllo squalifica PRIMA di registrare nuovi eventi
-        if ($character->isDisqualified()) {
+        if (!$bypass && $character->isDisqualified()) {
             Log::warning("❌ Event rejected — character is disqualified", [
                 'character' => $character->name,
                 'event'     => $eventCode,
@@ -404,7 +426,7 @@ class CharacterController extends Controller
         ];
 
         // 8. Registra l'evento
-        $event = CharacterEvent::record($character, $eventCode, $context);
+        $event = CharacterEvent::record($character, $eventCode, $context, $bypass);
         $character->refresh();
 
         // === Aggiorna il livello del personaggio ===
@@ -447,7 +469,7 @@ class CharacterController extends Controller
 
 
         // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
-        if ($character->isDisqualified()) {
+        if (!$bypass && $character->isDisqualified()) {
             return $this->buildDisqualifiedResponse($character);
         }
 
@@ -529,7 +551,7 @@ class CharacterController extends Controller
                 'code'         => $event->event_code,
                 'points'       => $event->points,
                 'is_critical'  => $event->eventType->is_critical ?? false,
-                'disqualified' => $character->isDisqualified(),
+                'disqualified' => (!$bypass && $character->isDisqualified()),
             ],
         ]);
     }

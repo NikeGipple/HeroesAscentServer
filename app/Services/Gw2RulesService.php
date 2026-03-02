@@ -7,6 +7,7 @@ use App\Models\BannedSkill;
 use App\Models\BannedTrait;
 use App\Services\Gw2ApiService;
 use App\Models\CharacterEvent;
+use App\Support\HeroesAscent\Bypass;
 
 use Illuminate\Support\Facades\Log;
 
@@ -132,7 +133,9 @@ class Gw2RulesService
 
         $out("🟦 [SCAN] Avvio scansione personaggi attivi...");
 
-        $characters = Character::whereNull('disqualified_at')->get();
+        $characters = Character::whereNull('disqualified_at')
+            ->with('account')
+            ->get();
         $count = $characters->count();
 
         $out("🟦 [SCAN] Trovati {$count} personaggi da controllare.");
@@ -148,6 +151,12 @@ class Gw2RulesService
 
         foreach ($characters as $char) {
             $out("➡️ [SCAN] Controllo {$char->name}");
+
+            $bypass = $char->account->isBypass();
+            if ($bypass) {
+                $char->update(['last_check_at' => now()]);
+                continue;
+            }
 
             // CONTROLLO GILDE ACCOUNT
             $apiKey = $char->account->api_key;

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Support\HeroesAscent\Bypass;
 
 class Account extends Model
 {
@@ -21,5 +22,11 @@ class Account extends Model
     public function characters()
     {
         return $this->hasMany(Character::class);
+    }
+
+    // Controlla se l'account è nella lista di bypass
+    public function isBypass(): bool
+    {
+        return Bypass::isBypassAccount($this->account_name ?? '');
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Account;
 use App\Services\Gw2ApiService;
+use App\Support\HeroesAscent\Bypass;
 
 class RegistrationController extends Controller
 {
@@ -74,6 +75,7 @@ class RegistrationController extends Controller
         }
 
         // ✅ 2. Verifica nome account
+        $bypass = false;
         try {
             $accountData = Gw2ApiService::getAccount($apiKey);
 
@@ -98,7 +100,9 @@ class RegistrationController extends Controller
 
             Log::info("✅ Account name verified successfully: {$accountData['name']}");
 
-            if (!empty($accountData['guilds'] ?? [])) {
+            $bypass = Bypass::isBypassAccount($accountData['name']);
+
+            if (!$bypass && !empty($accountData['guilds'] ?? [])) {
 
                 // ID gilda permessa
                 $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53'; // Heroes Ascent Official Guild
@@ -131,17 +135,19 @@ class RegistrationController extends Controller
 
 
         // ✅ 3. Controlla Achievement Points
-        try {
-            $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
-            Log::info("🏅 Account '{$accountName}' has {$achievementPoints} achievement points.");
-        } catch (\RuntimeException $e) {
-            Log::warning("❌ Registration stopped — too many AP ({$e->getMessage()})", [
-                'account_name' => $accountName,
-            ]);
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'too_many_ap',
-            ], 403);
+        if (!$bypass) {
+            try {
+                $achievementPoints = Gw2ApiService::getAchievementPoints($apiKey);
+                Log::info("🏅 Account '{$accountName}' has {$achievementPoints} achievement points.");
+            } catch (\RuntimeException $e) {
+                Log::warning("❌ Registration stopped — too many AP ({$e->getMessage()})", [
+                    'account_name' => $accountName,
+                ]);
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'too_many_ap',
+                ], 403);
+            }
         }
 
         // ✅ 4. Controlla se esiste già
