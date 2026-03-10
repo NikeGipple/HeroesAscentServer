@@ -81,6 +81,16 @@ class EventTypeSeeder extends Seeder
                 'color' => 'danger',
             ],
 
+            [
+                'code' => 'TOME_USED',
+                'name' => 'Uso Tomo di Livello',
+                'description' => 'Il personaggio ha utilizzato un tomo di livello (skill 1080), vietato dal regolamento.',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
+
             // === MOVIMENTO / CAMBI MAPPPA / MOUNT ===
             [
                 'code' => 'MAP_CHANGED',
