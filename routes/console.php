@@ -12,4 +12,5 @@ Artisan::command('inspire', function () {
 // SCHEDULAZIONE DEL TUO CRON JOB
 Schedule::command('characters:scan')
     ->everyFiveMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/cron.log'));
