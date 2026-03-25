@@ -1,17 +1,21 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Models\Account;
 use App\Models\Character;
-use App\Models\CharacterEvent;
 use App\Models\EventType;
-use App\Models\ForbiddenMap;
+use App\Models\CharacterEvent;
+use App\Services\CharacterEventRecorder;
+use App\Http\Requests\CharacterUpdateRequest;
+use App\Services\CharacterEventWorkflow;
 
 class CharacterController extends Controller
 {
+    public function __construct(private CharacterEventWorkflow $workflow)
+    {
+    }
+
     /**
      * Costruisce la risposta standard quando il personaggio è squalificato.
      */
@@ -27,103 +31,48 @@ class CharacterController extends Controller
             'status'  => 'error',
             'message' => 'Character is disqualified',
             'last_violation' => $lastViolation ? [
-                'code'        => $lastViolation->event_code,
+                'code' => $lastViolation->event_code,
             ] : null,
         ], 403);
     }
-    
+
     /**
-     * Riceve e valida un aggiornamento dal client, identifica il personaggio,
-     * applica i controlli sulle regole, registra l’evento e gestisce
-     * automaticamente la squalifica in caso di violazioni critiche.
-     *
-     * Restituisce:
-     * - status:ok per eventi validi
-     * - status:error con ultima violazione se il personaggio è squalificato
+     * Riceve gli eventi dal client del giocatore, applica le regole di gara
+     * (validazione, normalizzazione mappe/buff, controlli di coerenza) e
+     * registra l’evento aggiornando eventuale squalifica o progressione.
      */
-    public function update(Request $request)
+    public function update(CharacterUpdateRequest $request)
     {
         Log::info("=== Incoming Character Update ===", [
             'ip'      => $request->ip(),
             'payload' => $request->all(),
         ]);
 
-        // 1. Validazione base
-        $data = $request->validate([
-            'token'             => 'required|string',
-            'name'              => 'required|string',
-            'event'             => 'required|string',
-            'map_id'            => 'required|integer',
-            'state'             => 'required|integer',
-            'map_type'          => 'sometimes|integer',
-            'profession'        => 'sometimes|integer',
-            'elite_spec'        => 'sometimes|integer',
-            'race'              => 'sometimes|integer',
-            'group_type'        => 'sometimes|integer',
-            'group_count'       => 'sometimes|integer',
-            'commander'         => 'sometimes|boolean',
-            'mount'             => 'sometimes|integer',
-            'is_login'          => 'sometimes|boolean',
-            'position.x'        => 'sometimes|numeric',
-            'position.y'        => 'sometimes|numeric',
-            'position.z'        => 'sometimes|numeric',
-            'level'             => 'sometimes|integer',
-            'effective_level'   => 'sometimes|integer',
-            'buff_id'           => 'sometimes|integer',
-            'buff_name'         => 'sometimes|string',
-        ]);
+        // 1) Validazione payload
+        $data = $request->validated();
 
-        // 2. Account lookup
-        $account = Account::where('account_token', $data['token'])->first();
+        // 2) Account lookup
+        $account = $this->workflow->findAccount($data['token'], $request->ip());
         if (!$account) {
-            Log::warning("❌ Account not found for provided token", [
-                'ip' => $request->ip(),
-                'token' => substr($data['token'], 0, 12) . '...',
-            ]);
             return response()->json(['status' => 'error', 'message' => 'Account not registered'], 404);
         }
 
-        // Controlla bypass
         $bypass = $account->isBypass();
+        $eventCode = $this->workflow->normalizeEventCode($data);
 
-        // Normalizza codice evento
-        $eventCode = strtoupper($data['event']);
-
-        // 4. Recupera o crea il personaggio
-        $isNewCharacter = ($eventCode === 'LOGIN' && isset($data['level']) && (int)$data['level'] === 1);
-
-        if ($isNewCharacter) {
-
-            // Creiamo un nuovo personaggio
-            $character = Character::create([
-                'name'        => $data['name'],
-                'account_id'  => $account->id,
-                'profession'  => $data['profession'] ?? null,
-                'level'       => 1,
-                'score'       => 0,
-            ]);
-
-        } else {
-
-            // Recuperiamo il personaggio esistente
-            $character = Character::where('name', $data['name'])
-                ->where('account_id', $account->id)
-                ->latest('id')
-                ->first();
-
-                if (!$character) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Character not found',
-                    ], 404);
-                }
+        // 3) Personaggio: trova o crea al primo LOGIN livello 1
+        $character = $this->workflow->findOrCreateCharacter($account, $data, $eventCode);
+        if (!$character) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Character not found',
+            ], 404);
         }
-        
-        // === EVENTO LOGOUT ===
-        if ($eventCode === 'LOGOUT') {
 
-            Log::info("🔻 LOGOUT ricevuto per {$data['name']}", [
-                'account_id' => $account->id,
+        // 4) Gestione logout rapida
+        if ($eventCode === 'LOGOUT') {
+            Log::info("?? LOGOUT ricevuto per {$data['name']}", [
+                'account_id'   => $account->id,
                 'character_id' => $character->id ?? null,
             ]);
 
@@ -131,74 +80,60 @@ class CharacterController extends Controller
                 'details' => 'Client event: LOGOUT',
                 'map_id'  => $data['map_id'] ?? null,
                 'state'   => $data['state'] ?? null,
-                
-            ], $bypass
-            );
+            ], $bypass);
 
             return response()->json([
                 'status' => 'ok',
-                'event' => [
-                    'code' => 'LOGOUT',
-                    'points' => 0,
-                    'is_critical' => false,
+                'event'  => [
+                    'code'         => 'LOGOUT',
+                    'points'       => 0,
+                    'is_critical'  => false,
                     'disqualified' => (!$bypass && $character->isDisqualified()),
                 ],
             ]);
         }
 
-        // === LOGOUT_LOW_HP ===
         if ($eventCode === 'LOGOUT_LOW_HP') {
-
-            Log::warning("⚠️ LOGOUT_LOW_HP rilevato per {$data['name']}", [
+            Log::warning("?? LOGOUT_LOW_HP rilevato per {$data['name']}", [
                 'account_id'   => $account->id,
                 'character_id' => $character->id ?? null,
                 'state'        => $data['state'] ?? null,
                 'map_id'       => $data['map_id'] ?? null,
             ]);
 
-            // Registra l’evento
             CharacterEvent::record($character, 'LOGOUT_LOW_HP', [
                 'details' => 'Client event: LOGOUT_LOW_HP',
                 'map_id'  => $data['map_id'] ?? null,
                 'state'   => $data['state'] ?? null,
+            ], $bypass);
 
-            ], $bypass
-            );
-
-            // === Controllo abuso ===
             $startOfDay = now()->startOfDay();
-            $limit = 1; // alla seconda volta scatta l’abus
+            $limit = 1;
 
             $recent = $character->events()
                 ->where('event_code', 'LOGOUT_LOW_HP')
                 ->where('detected_at', '>=', $startOfDay)
                 ->count();
 
-            // === Abuso rilevato: registra evento dedicato ===
             if ($recent > $limit) {
-
-                Log::error("⛔ ABUSO LOGOUT_LOW_HP! Evento dedicato registrato per {$character->name}", [
+                Log::error("? ABUSO LOGOUT_LOW_HP per {$character->name}", [
                     'character_id' => $character->id,
                     'count'        => $recent,
                 ]);
 
-                // Registra evento ABUSE_LOGOUT_LOW_HP (evento critico)
-                $abuseEvent = CharacterEvent::record($character, 'ABUSE_LOGOUT_LOW_HP', [
+                CharacterEvent::record($character, 'ABUSE_LOGOUT_LOW_HP', [
                     'details' => "System event: ABUSE_LOGOUT_LOW_HP events",
                     'map_id'  => $data['map_id'] ?? null,
                     'state'   => $data['state'] ?? null,
-                    
-                ], $bypass
-                );
+                ], $bypass);
 
-                // Dopo il record, il personaggio è ora squalificato
                 if (!$bypass) {
                     return $this->buildDisqualifiedResponse($character);
                 }
-                // bypass: rispondi subito e chiudi
+
                 return response()->json([
                     'status' => 'ok',
-                    'event' => [
+                    'event'  => [
                         'code'         => 'ABUSE_LOGOUT_LOW_HP',
                         'points'       => 0,
                         'is_critical'  => false,
@@ -207,11 +142,9 @@ class CharacterController extends Controller
                 ]);
             }
 
-
-            // Risposta normale
             return response()->json([
                 'status' => 'ok',
-                'event' => [
+                'event'  => [
                     'code'         => 'LOGOUT_LOW_HP',
                     'points'       => 0,
                     'is_critical'  => false,
@@ -220,88 +153,27 @@ class CharacterController extends Controller
             ]);
         }
 
+        // 5) Mappa e buff: normalizza o blocca l'evento
+        $eventCode = $this->workflow->validateMapEvent($eventCode, $data);
 
-
-        // === CONTROLLO MAPPE VIETATE ===
-        if ($eventCode === 'MAP_CHANGED') {
-
-            $mapId   = (int)$data['map_id'];
-            $mapType = (int)($data['map_type'] ?? -1);
-
-            $forbidden = ForbiddenMap::where('map_id', $mapId)->first();
-
-            // 🔥 1) MapType == 2 ovvero sPvP → automaticamente vietata
-            if ($mapType === 2) {
-
-                Log::warning("⛔ Mappa sPvP rilevata!", [
-                    'character' => $data['name'],
-                    'map_id'    => $mapId,
-                    'map_type'  => $mapType,
-                ]);
-
-                $eventCode = 'MAP_CHANGED_INVALID';
-            }
-            // 🔥 2) Mappa presente nella lista ForbiddenMap
-            elseif ($forbidden) {
-
-                Log::warning("⛔ Mappa Vietata Rilevata!", [
-                    'character' => $data['name'],
-                    'map_id'    => $mapId,
-                    'map_name'  => $forbidden->name,
-                    'type'      => $forbidden->type,
-                ]);
-
-                $eventCode = 'MAP_CHANGED_INVALID';
-            }
+        $buffCheck = $this->workflow->translateBuffEvent($eventCode, $data);
+        if ($buffCheck['error']) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unknown BUFF_APPLIED payload',
+            ], 400);
         }
+        $eventCode = $buffCheck['code'];
 
-
-        // === BUFF PROIBITI (Cibo, Enhancement, Reinforced Armor) ===
-        if ($eventCode === 'BUFF_APPLIED') {
-
-            $buffId   = (int)($data['buff_id'] ?? 0);
-            $buffName = strtolower($data['buff_name'] ?? '');
-
-            // Nourishment (Cibo)
-            if ($buffName === 'nourishment') {
-                $eventCode = 'BUFF_FORBIDDEN_FOOD';
-            }
-
-            // Enhancement (Utility)
-            elseif ($buffName === 'enhancement') {
-                $eventCode = 'BUFF_FORBIDDEN_ENHANCEMENT';
-            }
-
-            // Reinforced Armor (ID 9283)
-            elseif ($buffId === 9283) {
-                $eventCode = 'BUFF_FORBIDDEN_REINFORCED';
-            }
-
-            // Se buff non riconosciuto: rifiutiamo
-            else {
-                Log::warning("⚠️ BUFF_APPLIED ricevuto ma non riconosciuto", [
-                    'buff_id' => $buffId,
-                    'buff_name' => $buffName,
-                ]);
-
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unknown BUFF_APPLIED payload',
-                ], 400);
-            }
-        }
-
-
-        // 3. Verifica tipo evento
+        // 6) Tipo evento e stato squalifica pre-esistente
         $eventType = EventType::where('code', $eventCode)->first();
         if (!$eventType) {
-            Log::warning("⚠️ Unknown event type received: {$eventCode}", ['payload' => $data]);
+            Log::warning("?? Unknown event type received: {$eventCode}", ['payload' => $data]);
             return response()->json(['status' => 'error', 'message' => "Unknown event type: {$eventCode}"], 400);
         }
 
-        // 5. Controllo squalifica PRIMA di registrare nuovi eventi
         if (!$bypass && $character->isDisqualified()) {
-            Log::warning("❌ Event rejected — character is disqualified", [
+            Log::warning("? Event rejected — character is disqualified", [
                 'character' => $character->name,
                 'event'     => $eventCode,
             ]);
@@ -309,150 +181,39 @@ class CharacterController extends Controller
             return $this->buildDisqualifiedResponse($character);
         }
 
-
-
-        // Bit di stato
-        $CS_IS_ALIVE  = 1 << 0;
-        $CS_IS_DOWNED = 1 << 1;
-        $CS_IS_GLIDING = 1 << 5;
+        // 7) Controlli di coerenza sul payload
         $state = (int) $data['state'];
-        $errors = [];
-
-        // 6. Controlli specifici di coerenza per tipo evento
-        switch ($eventCode) {
-            case 'LOGIN':
-                if (array_key_exists('is_login', $data) && !$request->boolean('is_login')) {
-                    $errors[] = 'Payload says event=LOGIN but is_login flag is false';
-                }
-                break;
-            
-            case 'LOGOUT':
-                break;
-
-            case 'DOWNED':
-                if (($state & $CS_IS_DOWNED) === 0) {
-                    $errors[] = 'State bit does not indicate DOWNED';
-                }
-                break;
-
-            case 'DEAD':
-                if (($state & $CS_IS_ALIVE) !== 0) {
-                    $errors[] = 'State bit indicates alive while event is DEAD';
-                }
-                break;
-
-            case 'MOUNT_CHANGED':
-                if (!array_key_exists('mount', $data)) {
-                    $errors[] = 'Missing mount index for MOUNT_CHANGED';
-                }
-                break;
-            case 'GLIDING':
-                if (($state & $CS_IS_GLIDING) === 0) {
-                    $errors[] = 'State bit does not indicate gliding while event is GLIDING';
-                }
-                break;
-
-            case 'MAP_CHANGED':
-                if (!array_key_exists('map_type', $data)) {
-                    $errors[] = 'Missing map_type for MAP_CHANGED';
-                }
-                break;
-            case 'MAP_CHANGED_INVALID':
-                if (!array_key_exists('map_type', $data)) {
-                    $errors[] = 'Missing map_type for MAP_CHANGED_INVALID';
-                }
-                break;
-            case 'LEVEL_UP':
-                if (!array_key_exists('level', $data)) {
-                    $errors[] = 'Missing level for LEVEL_UP';
-                }
-                break;
-            case 'HEALING_USED':
-                break;
-            case 'GROUP':
-                $gt = (int)($data['group_type'] ?? 0);
-                $gc = (int)($data['group_count'] ?? 0);
-
-                if ($gt === 0 && $gc === 0) {
-                    $errors[] = 'Invalid GROUP event: both group_type and group_count are 0';
-                }
-                break;
-
-
-            case 'BUFF_APPLIED':
-                if (!array_key_exists('buff_id', $data)) {
-                    $errors[] = 'Missing buff_id for BUFF_APPLIED';
-                }
-                if (!array_key_exists('buff_name', $data)) {
-                    $errors[] = 'Missing buff_name for BUFF_APPLIED';
-                }
-                break;
-        }
-
+        $errors = $this->workflow->validateIntegrity($eventCode, $state, $data, $request);
         if (!empty($errors)) {
-            Log::warning("⚠️ Payload failed integrity checks", [
-                'character' => $character->name,
-                'event'     => $eventCode,
-                'errors'    => $errors,
-            ]);
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Payload failed integrity checks',
-                'errors' => $errors,
+                'errors'  => $errors,
             ], 400);
         }
 
-        // 🗺️ 7. Costruisci contesto da salvare
-        $context = [
-            'map_id'      => (int)$data['map_id'],
-            'map_type'    => $data['map_type'] ?? null,
-            'profession'  => $data['profession'] ?? null,
-            'elite_spec'  => $data['elite_spec'] ?? null,
-            'race'        => $data['race'] ?? null,
-            'state'       => $state,
-            'group_type'  => $data['group_type'] ?? null,
-            'group_count' => $data['group_count'] ?? null,
-            'commander'   => $data['commander'] ?? false,
-            'is_login'    => ($eventCode === 'LOGIN'),
-            'pos_x'       => $data['position']['x'] ?? null,
-            'pos_y'       => $data['position']['y'] ?? null,
-            'pos_z'       => $data['position']['z'] ?? null,
-            'mount_index' => $data['mount'] ?? null,
-            'level'            => $data['level'] ?? null,
-            'effective_level'  => $data['effective_level'] ?? null,
-            'details'     => $data['details'] ?? ("Client event: {$eventCode}"),
-            'buff_id'   => $data['buff_id'] ?? null,
-            'buff_name' => $data['buff_name'] ?? null,
-        ];
+        // 8) Registrazione evento e contesto
+        $context = CharacterEventRecorder::buildContext($data, $eventCode, $state);
+        $event   = CharacterEventRecorder::recordEvent($character, $eventCode, $context, $bypass);
 
-        // 8. Registra l'evento
-        $event = CharacterEvent::record($character, $eventCode, $context, $bypass);
-        $character->refresh();
-
-        // === Aggiorna il livello del personaggio ===
+        // 9) Progressione livello
         if ($eventCode === 'LEVEL_UP') {
-
-            $newLevel = (int)($data['level'] ?? 0);
-            $currentLevel = (int)$character->level;
+            $newLevel     = (int) ($data['level'] ?? 0);
+            $currentLevel = (int) $character->level;
 
             $allowed = false;
-
-            // Caso speciale: da 1 → 3 permesso
             if ($currentLevel === 1 && $newLevel === 3) {
                 $allowed = true;
             }
-
-            // Caso normale: +1 livello
             if ($newLevel === $currentLevel + 1) {
                 $allowed = true;
             }
 
             if (!$allowed) {
-
-                Log::warning("🚫 Level jump detected!", [
-                    'character'      => $character->name,
-                    'current_level'  => $currentLevel,
-                    'requested'      => $newLevel,
+                Log::warning("?? Level jump detected!", [
+                    'character'     => $character->name,
+                    'current_level' => $currentLevel,
+                    'requested'     => $newLevel,
                 ]);
 
                 return response()->json([
@@ -461,93 +222,21 @@ class CharacterController extends Controller
                 ], 400);
             }
 
-            // Ok → aggiorna livello nel DB
             $character->level = $newLevel;
             $character->save();
         }
 
-
-
-        // Dopo un evento critico il personaggio potrebbe essere appena stato squalificato
+        // 10) Check squalifica dopo evento critico
         if (!$bypass && $character->isDisqualified()) {
             return $this->buildDisqualifiedResponse($character);
         }
 
-        Log::info("✅ Event recorded for {$character->name}", [
-            'event'       => $event->event_code,
-            'points'      => $event->points,
-            'is_critical' => $event->eventType->is_critical ?? false,
-            'account_id'  => $account->id,
-        ]);
+        // 11) Log strutturato dell'esito
+        $this->workflow->logOutcome($eventCode, $character, $account, $data, $event);
 
-        // 9. Log per eventi 
-        if ($eventCode === 'LOGIN') {
-            Log::info("🔑 Character {$character->name} logged in successfully", [
-                'account_name' => $account->account_name,
-                'map_id' => $data['map_id'],
-            ]);
-        
-        } elseif ($eventCode === 'LOGOUT') {
-            Log::info("🔑 Character {$character->name} logged out", [
-                'map_id' => $data['map_id'] ?? null,
-            ]);
-        } elseif ($eventCode === 'LEVEL_UP') {
-            Log::info("🎉 Level Up! {$character->name} è salito al livello {$data['level']}", [
-                'level'            => $data['level'] ?? null,
-                'map_id'           => $data['map_id'],
-            ]);
-        } elseif ($eventCode === 'DOWNED') {
-            Log::warning("🩸 Character {$character->name} is DOWNED", [
-                'map_id' => $data['map_id'],
-            ]);
-        } elseif ($eventCode === 'DEAD') {
-            Log::warning("💀 Character {$character->name} has died", [
-                'map_id' => $data['map_id'],
-            ]);
-        } elseif ($eventCode === 'MAP_CHANGED') {
-            Log::info("ℹ️ Character {$character->name} changed map", [
-                'new_map_id' => $data['map_id'],
-            ]);      
-        } elseif ($eventCode === 'MAP_CHANGED_INVALID') {
-            Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
-                'map_id' => $data['map_id'],
-            ]);
-        } elseif ($eventCode === 'MOUNT_CHANGED') {
-            Log::warning("🐎❌ MOUNT usage detected for {$character->name}", [
-                'mount_index' => $data['mount'] ?? null,
-            ]);
-        } elseif ($eventCode === 'GLIDING') {
-            Log::warning("🌪️❌ GLIDING rilevato per {$character->name}");
-
-        } elseif ($eventCode === 'HEALING_USED') {
-            Log::warning("❤️‍🩹❌ HEALING SKILL used by {$character->name}");
-
-        } elseif ($eventCode === 'MAP_CHANGED_INVALID') {
-            Log::warning("🚫 Character {$character->name} entered a FORBIDDEN MAP!", [
-                'map_id' => $data['map_id'],
-            ]);
-            
-        } elseif ($eventCode === 'BUFF_FORBIDDEN_FOOD') {
-            Log::warning("🍗❌ CIBO vietato per {$character->name}");
-        }
-        elseif ($eventCode === 'BUFF_FORBIDDEN_ENHANCEMENT') {
-            Log::warning("⚡❌ ENHANCEMENT vietato per {$character->name}");
-        }
-        elseif ($eventCode === 'BUFF_FORBIDDEN_REINFORCED') {
-            Log::warning("🛡️❌ REINFORCED ARMOR rilevato per {$character->name}");
-        } 
-        elseif ($eventCode === 'GROUP') {
-            Log::warning("🚫 Player {$character->name} is in a GROUP!", [
-                'group_type'  => $data['group_type'] ?? null,
-                'group_count' => $data['group_count'] ?? null,
-            ]);
-        }
-
-
-        // ✅ 10. Risposta finale
         return response()->json([
-            'status'  => 'ok',
-            'event'   => [
+            'status' => 'ok',
+            'event'  => [
                 'code'         => $event->event_code,
                 'points'       => $event->points,
                 'is_critical'  => $event->eventType->is_critical ?? false,
@@ -556,4 +245,5 @@ class CharacterController extends Controller
         ]);
     }
 
+    
 }
