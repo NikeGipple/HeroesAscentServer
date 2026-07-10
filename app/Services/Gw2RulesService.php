@@ -158,29 +158,28 @@ class Gw2RulesService
                 continue;
             }
 
-            // CONTROLLO GILDE ACCOUNT
+            // CONTROLLO GILDA RAPPRESENTATA (per-personaggio, non per-account).
+            // I buff di gilda si applicano solo alla gilda rappresentata dal personaggio
+            // in gara: è quella a dare un eventuale vantaggio, non l'appartenenza account.
             $apiKey = $char->account->api_key;
-            $guilds = Gw2ApiService::scanAccountGuilds($apiKey);
+            $repr = Gw2ApiService::getRepresentedGuild($apiKey, $char->name);
 
-            $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53';
+            // Su errore API (perm mancante, rete, personaggio non trovato) NON squalifichiamo:
+            // meglio rimandare al prossimo giro che escludere per un falso positivo.
+            if (!$repr['error'] && $repr['guild'] !== null) {
 
-            if (!empty($guilds) && !isset($guilds['error'])) {
+                $allowedGuilds = config('heroesascent.allowed_guilds', []);
 
-                // Se una delle gilde è quella ammessa → NON registriamo nulla e proseguiamo
-                if (in_array($allowedGuild, $guilds, true)) {
-
-                } else {
-
-                    // Altrimenti → squalifica 
-                    $firstGuild = $guilds[0];
+                // Lista vuota (default) ⇒ rappresentare qualsiasi gilda è una violazione.
+                if (!in_array($repr['guild'], $allowedGuilds, true)) {
 
                     CharacterEvent::record($char, 'ACCOUNT_IN_GUILD', [
-                        'details'   => "Account appartenente alla gilda (ID: {$firstGuild})",
+                        'details'   => "Personaggio rappresenta una gilda non permessa (ID: {$repr['guild']})",
                     ]);
 
-                    $out("🚨 [SCAN] {$char->name} appartiene a una gilda NON permessa. Rimosso dalla competizione.");
-                    Log::warning("Personaggio {$char->name} escluso → appartiene a una gilda non ammessa", [
-                        'guilds' => $guilds
+                    $out("🚨 [SCAN] {$char->name} sta rappresentando una gilda non permessa. Rimosso dalla competizione.");
+                    Log::warning("Personaggio {$char->name} escluso → rappresenta una gilda non ammessa", [
+                        'guild' => $repr['guild'],
                     ]);
 
                     $char->update(['last_check_at' => now()]);

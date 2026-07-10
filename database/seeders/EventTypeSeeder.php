@@ -148,8 +148,8 @@ class EventTypeSeeder extends Seeder
             ],
             [
                 'code' => 'ACCOUNT_IN_GUILD',
-                'name' => 'Account in una gilda',
-                'description' => 'L’account appartiene a una o più gilde — vietato dal regolamento del concorso',
+                'name' => 'Personaggio rappresenta una gilda',
+                'description' => 'Il personaggio in gara sta rappresentando una gilda non permessa — i buff di gilda si applicano solo alla gilda rappresentata, quindi è la rappresentazione (per-personaggio) a essere vietata, non la semplice appartenenza dell’account',
                 'category' => 'violation',
                 'points' => 0,
                 'is_critical' => true, 

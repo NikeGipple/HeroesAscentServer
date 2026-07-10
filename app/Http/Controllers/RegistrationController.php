@@ -56,10 +56,21 @@ class RegistrationController extends Controller
                 ], 503);
             }
 
-            if (!in_array('account', $tokenInfo['permissions']) || !in_array('progression', $tokenInfo['permissions'])) {
+            // Permessi MINIMI richiesti sull'API key (possono evolvere nel tempo — vedi CLAUDE.md).
+            // Ogni scope è richiesto da un controllo lato server specifico:
+            //   - account      → /v2/account (nome account, achievement points)
+            //   - progression  → /v2/account/achievements (soglia AP)
+            //   - characters   → /v2/characters/:id/core (gilda rappresentata, equipmenttabs)
+            // NB: la scansione build (trait/skill vietati) usa anche lo scope `builds`;
+            //     valutare se aggiungerlo qui — vedi docs/TODO.md.
+            $requiredScopes = ['account', 'progression', 'characters'];
+            $missingScopes  = array_diff($requiredScopes, $tokenInfo['permissions'] ?? []);
+
+            if (!empty($missingScopes)) {
                 Log::warning("❌ Registration failed: invalid API key permissions", [
                     'account_name' => $accountName,
                     'permissions'  => $tokenInfo['permissions'] ?? [],
+                    'missing'      => array_values($missingScopes),
                 ]);
                 return response()->json([
                     'status' => 'error',
@@ -109,27 +120,13 @@ class RegistrationController extends Controller
                 'env_raw' => env('HA_BYPASS_ACCOUNTS'), // solo per debug
             ]);
 
-            if (!$bypass && !empty($accountData['guilds'] ?? [])) {
-
-                // ID gilda permessa
-                $allowedGuild = '76A00BE9-8DEB-EE11-8465-0228F2FB5E53'; // Heroes Ascent Official Guild
-
-                if (count($accountData['guilds']) === 1 && $accountData['guilds'][0] === $allowedGuild) {
-                    // Procedi normalmente
-                } 
-                else {
-                    // Qualsiasi altra gilda, o più gilde → blocco
-                    Log::warning("❌ Registration blocked: '{$accountName}' appartiene a una o più gilde non permesse", [
-                        'ip' => $request->ip(),
-                    ]);
-
-                    return response()->json([
-                        'status'  => 'error',
-                        'message' => 'guild_membership_not_allowed',
-                    ], 403);
-                }
-            }
-
+            // NB: nessun controllo gilda qui. Il vantaggio vietato deriva dalla gilda
+            // RAPPRESENTATA sul personaggio in gara (per-personaggio, verificato sulla
+            // wiki GW2), non dall'appartenenza dell'account — e in fase di registrazione
+            // (solo account, nessun personaggio ancora noto) non c'è un personaggio da
+            // controllare. L'enforcement avviene per-personaggio nella scansione periodica
+            // (Gw2RulesService::scanAllActiveCharacters → getRepresentedGuild), con
+            // un'unica policy condivisa (config heroesascent.allowed_guilds).
 
         } catch (\Throwable $e) {
             Log::error("⚠️ GW2 API error (account verification): " . $e->getMessage());
