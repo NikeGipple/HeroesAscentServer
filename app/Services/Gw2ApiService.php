@@ -318,21 +318,41 @@ class Gw2ApiService
 
 
     /**
-     * Controlla SE l'account appartiene a una o piu gilde:
+     * Ritorna la gilda ATTUALMENTE RAPPRESENTATA dal personaggio.
+     *
+     * La rappresentazione di gilda è per-personaggio (non per-account) e i buff di
+     * gilda si applicano SOLO alla gilda rappresentata (verificato sulla wiki GW2):
+     * la semplice appartenenza dell'account a una gilda non dà alcun vantaggio, è la
+     * rappresentazione sul personaggio in gara che conta ai fini del regolamento.
+     * Fonte: campo "guild" (opzionale) di /v2/characters/:id/core — richiede lo scope
+     * `characters` sull'API key (vedi requisiti minimi in RegistrationController).
+     *
+     * @return array{error: bool, guild: ?string}
+     *   error=true  → chiamata API fallita: il chiamante NON deve trattarlo come violazione.
+     *   guild=null  → il personaggio non rappresenta alcuna gilda (OK).
+     *   guild=GUID  → il personaggio sta rappresentando quella gilda.
      */
-    public static function scanAccountGuilds(string $apiKey): array
+    public static function getRepresentedGuild(string $apiKey, string $characterName): array
     {
-        try {
-            $account = Gw2ApiService::getAccount($apiKey); // GET /v2/account
+        $encoded = rawurlencode($characterName);
 
-            if (!isset($account['guilds']) || empty($account['guilds'])) {
-                return []; // OK → nessuna gilda
-            }
+        $data = self::safeRequest(
+            "https://api.guildwars2.com/v2/characters/{$encoded}/core",
+            $apiKey,
+            [],
+            60
+        );
 
-            return $account['guilds']; // Lista ID gilde
-        } catch (\Exception $e) {
-            Log::error("Errore chiamando /v2/account per controllo gilde: " . $e->getMessage());
-            return ['error' => true];
+        // safeRequest ritorna null su ogni fallimento (rete, 4xx/5xx, permesso mancante);
+        // il body d'errore GW2 arriva come { "text": "..." }. In entrambi i casi: errore.
+        if (!is_array($data) || isset($data['text'])) {
+            Log::warning("⚠️ Impossibile leggere la gilda rappresentata per {$characterName}: " . json_encode($data));
+            return ['error' => true, 'guild' => null];
         }
+
+        // "guild" è opzionale: assente o vuoto ⇒ nessuna gilda rappresentata.
+        $guild = $data['guild'] ?? null;
+
+        return ['error' => false, 'guild' => !empty($guild) ? $guild : null];
     }
 }
