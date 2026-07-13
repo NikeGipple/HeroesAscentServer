@@ -37,13 +37,16 @@ class CharacterEventWorkflow
         $isNewCharacter = ($eventCode === 'LOGIN' && isset($data['level']) && (int) $data['level'] === 1);
 
         if ($isNewCharacter) {
-            return Character::create([
-                'name'        => $data['name'],
-                'account_id'  => $account->id,
-                'profession'  => $data['profession'] ?? null,
-                'level'       => 1,
-                'score'       => 0,
-            ]);
+            // firstOrCreate (not create): a level-1 LOGIN should only make a NEW
+            // row the very first time this character is seen. Without the find
+            // half, logging out and back in while still level 1 silently created
+            // a second Character row instead of reusing the first, fragmenting
+            // its event history/score. Also closes a race two near-simultaneous
+            // LOGINs would otherwise have on plain create().
+            return Character::firstOrCreate(
+                ['name' => $data['name'], 'account_id' => $account->id],
+                ['profession' => $data['profession'] ?? null, 'level' => 1, 'score' => 0]
+            );
         }
 
         return Character::where('name', $data['name'])
