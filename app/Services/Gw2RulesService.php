@@ -13,15 +13,28 @@ use Illuminate\Support\Facades\Log;
 
 class Gw2RulesService
 {
+    /**
+     * Grace period: below this level, trait/skill/equipment checks are
+     * skipped entirely. This approximates "still in the tutorial/starting
+     * instance," where a fresh character hasn't had a real chance yet to
+     * notice and fix a forbidden loadout choice. Level-based, not
+     * zone-based, because this data comes from GW2's own polled account
+     * API (tier B — see root AGENTS.md's data-source tiers), which has no
+     * direct "currently in the tutorial instance" signal to check against.
+     */
+    private const GRACE_PERIOD_MAX_LEVEL = 2;
 
-
+    private static function isInGracePeriod(Character $character): bool
+    {
+        return $character->level <= self::GRACE_PERIOD_MAX_LEVEL;
+    }
 
     /**
      * Controlla l’equip del personaggio e ritorna gli oggetti non consentiti.
      */
     private static function getInvalidEquipment(Character $character): array
     {
-        if ($character->level <= 3) {
+        if (self::isInGracePeriod($character)) {
             return [];
         }
 
@@ -69,8 +82,8 @@ class Gw2RulesService
      * - ritorna array con violazioni o array vuoto
      */
     public static function scanCharacter(Character $character): array
-    {   
-        if ($character->level <= 3) {
+    {
+        if (self::isInGracePeriod($character)) {
             return [
                 'traits' => [],
                 'skills' => [],
