@@ -102,6 +102,8 @@ class CharacterEventWorkflow
         $buffId   = (int) ($data['buff_id'] ?? 0);
         $buffName = strtolower($data['buff_name'] ?? '');
 
+        // Match per NOME sulle categorie generiche cibo/utility: un cibo qualsiasi
+        // applica il buff di categoria "Nourishment"/"Enhancement".
         if ($buffName === 'nourishment') {
             return ['code' => 'BUFF_FORBIDDEN_FOOD', 'error' => false];
         }
@@ -110,8 +112,11 @@ class CharacterEventWorkflow
             return ['code' => 'BUFF_FORBIDDEN_ENHANCEMENT', 'error' => false];
         }
 
-        if ($buffId === 9283) {
-            return ['code' => 'BUFF_FORBIDDEN_REINFORCED', 'error' => false];
+        // Match per ID (data-driven: config/heroesascent.php → forbidden_buff_ids).
+        // Copre Reinforced Armor + i boost di gilda, e fa da fallback ID a cibo/utility.
+        $forbiddenById = config('heroesascent.forbidden_buff_ids', []);
+        if (isset($forbiddenById[$buffId])) {
+            return ['code' => $forbiddenById[$buffId], 'error' => false];
         }
 
         Log::warning("⚠️ BUFF_APPLIED ricevuto ma non riconosciuto", [
@@ -266,6 +271,12 @@ class CharacterEventWorkflow
                 break;
             case 'BUFF_FORBIDDEN_REINFORCED':
                 Log::warning("🛡️❌ REINFORCED ARMOR rilevato per {$character->name}");
+                break;
+            case 'BUFF_FORBIDDEN_GUILD':
+                Log::warning("🏰❌ BOOST DI GILDA rilevato per {$character->name}", [
+                    'buff_id'   => $data['buff_id'] ?? null,
+                    'buff_name' => $data['buff_name'] ?? null,
+                ]);
                 break;
             case 'GROUP':
                 Log::warning("🚫 Player {$character->name} is in a GROUP!", [
