@@ -186,6 +186,15 @@ class EventTypeSeeder extends Seeder
                 'is_critical' => true,
                 'color' => 'danger',
             ],
+            [
+                'code' => 'BUFF_FORBIDDEN_GUILD',
+                'name' => 'Boost di gilda',
+                'description' => 'Uso di un boost di gilda (es. Guild Experience Boost) — vietato dal regolamento (regola 7: nessun booster all’esperienza)',
+                'category' => 'violation',
+                'points' => 0,
+                'is_critical' => true,
+                'color' => 'danger',
+            ],
 
             [
                 'code' => 'BUILD_FORBIDDEN_TRAIT',
